@@ -1,0 +1,33 @@
+k8s/rbac.yaml
+  s_e8c3674ff155ea::t_ab6790623aaa21 1-42
+src/agentbox/launcher/worker.py
+  s_e8c3674ff155ea::t_ae235c78a93c56 279,283-285,287-291
+k8s/job-template.yaml
+  s_e8c3674ff155ea::t_fb10b43abcdab3 1-61
+pyproject.toml
+  s_e8c3674ff155ea::t_ce3cda51791593 11,15
+k8s/kind-config.yaml
+  s_e8c3674ff155ea::t_f6a75b2a874907 1-18
+k8s/namespace.yaml
+  s_e8c3674ff155ea::t_44b2a733fe08f4 1-4
+src/agentbox/launcher/backend_k8s.py
+  s_e8c3674ff155ea::t_5a7fd4d22133f0 1-212
+uv.lock
+  s_e8c3674ff155ea::t_d0f53a0bee1933 18,22,39,43,66-187,615-623,702-790,1159-1179,1267-1374,1554-1647,1986-1997,2207-2219,2367-2375,2668-2676,2817-2898
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "471731b863b8d8db2cde7614880dc347ba385093",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
