@@ -1,0 +1,31 @@
+docker-compose.yml
+  s_e8c3674ff155ea::t_ddfc68e69b60b4 9,17-60,64-70
+docker/entrypoint.sh
+  s_e8c3674ff155ea::t_d8d1b8fe5b0e7a 1-8
+src/agentbox/launcher/worker.py
+  s_e8c3674ff155ea::t_9b54b810c51845 167
+  s_e8c3674ff155ea::t_206955e4566049 1-20,22-24,26-166,168-296
+  s_e8c3674ff155ea::t_10d794e3df204d 25
+  s_e8c3674ff155ea::t_fb9dd83bc712b7 21
+src/agentbox/launcher/backend_docker.py
+  s_e8c3674ff155ea::t_4b3ac569feff98 1-122
+  s_e8c3674ff155ea::t_6d21de99c40d73 123
+docker/Dockerfile.controlplane
+  s_e8c3674ff155ea::t_000a752bb63172 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "34db2f6e0c149959a3452154f93c04375878f238",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
