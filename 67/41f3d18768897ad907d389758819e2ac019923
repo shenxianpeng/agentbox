@@ -1,0 +1,22 @@
+src/agentbox/mcp_server/server.py
+  s_e8c3674ff155ea::t_ce87244268f7ac 1-348
+tests/unit/test_mcp_server.py
+  s_e8c3674ff155ea::t_167455a8fc9c9f 1-9,11-25
+  s_e8c3674ff155ea::t_c2c5e6b11246ef 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "6741f3d18768897ad907d389758819e2ac019923",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
