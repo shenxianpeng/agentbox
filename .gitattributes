@@ -1,0 +1,21 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python
+*.py text diff=python
+
+# YAML
+*.yml text
+*.yaml text
+
+# Docker
+*.dockerfile text
+Dockerfile* text
+
+# Lock file
+uv.lock binary
+
+# Images
+*.png binary
+*.jpg binary
+*.svg text

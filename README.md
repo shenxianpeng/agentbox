@@ -1,10 +1,18 @@
-# AgentBox
+<div align="center">
+  <h1>AgentBox</h1>
+  <p><strong>A minimal open-source agent platform</strong> — durable execution, sandboxed agents, Logfire tracing.</p>
+</div>
 
-**A minimal open-source agent platform** that runs untrusted, long-lived AI agent workloads in isolated sandboxes, with **durable (resumable) execution** backed by Postgres and **full observability** via Logfire/OpenTelemetry.
+<div align="center">
+  <a href="https://github.com/shenxianpeng/agentbox/actions/workflows/ci.yml"><img src="https://github.com/shenxianpeng/agentbox/actions/workflows/ci.yml/badge.svg?event=push" alt="CI"></a>
+  <a href="https://pypi.python.org/pypi/agentbox"><img src="https://img.shields.io/pypi/v/agentbox.svg" alt="PyPI"></a>
+  <a href="https://github.com/shenxianpeng/agentbox"><img src="https://img.shields.io/pypi/pyversions/agentbox.svg" alt="versions"></a>
+  <a href="https://github.com/shenxianpeng/agentbox/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shenxianpeng/agentbox.svg" alt="license"></a>
+</div>
 
-> 🎯 **Purpose**: Portfolio project for [Pydantic's *Agent Infrastructure Engineer*](https://pydantic.dev/jobs/agent-infrastructure-engineer) role.
->
-> Every design decision mirrors that job description. See the [JD Mapping](#-jd-mapping) section below.
+---
+
+**AgentBox** runs untrusted, long-lived AI agent workloads in isolated sandboxes, with **durable (resumable) execution** backed by Postgres and **full observability** via Logfire/OpenTelemetry.
 
 ---
 
@@ -252,31 +260,6 @@ The data model includes `tenant_id` from day one:
 - **Fair scheduling with preemption**: weighted queues, priority classes
 - **Autoscaling**: scale launcher workers based on queue depth
 - **Cloud deployment**: EKS/GKE with cluster autoscaler
-
----
-
-## JD Mapping
-
-Every requirement from [Pydantic's Agent Infrastructure Engineer JD](https://pydantic.dev/jobs/agent-infrastructure-engineer) is addressed:
-
-| JD Requirement | Implementation |
-|---|---|
-| **"Design and harden the sandboxing model"** — container isolation, kernel sandboxes (gVisor), network egress policy, least-privilege credential minting | Docker containers with resource limits + read-only rootfs ([backend_docker.py](src/agentbox/launcher/backend_docker.py)), gVisor RuntimeClass ([k8s/runtimeclass-gvisor.yaml](k8s/runtimeclass-gvisor.yaml)), egress proxy default-deny ([docker-compose.yml](docker-compose.yml) + [tinyproxy.conf](docker/tinyproxy.conf)), scoped credentials ([secrets/scoper.py](src/agentbox/secrets/scoper.py)) |
-| **"Scale the agent runner"** — per-run isolation, concurrency and fairness, resource quotas, fast cold-starts, cost control | Per-run containers/pods, round-robin tenant scheduling ([worker.py](src/agentbox/launcher/worker.py)), K8s ResourceQuota ([k8s/resource-quota.yaml](k8s/resource-quota.yaml)), warm pool ([launcher/warm_pool.py](src/agentbox/launcher/warm_pool.py)), cost tracking ([cost/tracker.py](src/agentbox/cost/tracker.py)) |
-| **"Build durable, resumable agent execution"** — checkpointing model calls and tool invocations so runs survive pod failures | Postgres-backed checkpoint/replay engine ([runner/durable.py](src/agentbox/runner/durable.py)), DurableModel wrapping pydantic-ai ([runner/durable_model.py](src/agentbox/runner/durable_model.py)), kill-and-resume e2e test ([tests/e2e/test_kill_and_resume.py](tests/e2e/test_kill_and_resume.py)) |
-| **"Own the orchestration path end to end"** — enqueue → schedule (Kubernetes Batch) → execute → persist → lifecycle cleanup | API enqueue ([api/routes.py](src/agentbox/api/routes.py)), queue claim + lease management ([launcher/worker.py](src/agentbox/launcher/worker.py)), K8s Jobs backend ([launcher/backend_k8s.py](src/agentbox/launcher/backend_k8s.py)), TTL cleanup + reaper loop |
-| **"Integrate the agent runtime with our own observability"** — every agent run traced in Logfire, agents query Logfire (via MCP) for live telemetry | Logfire instrumentation at every layer ([api/main.py](src/agentbox/api/main.py), [runner/main.py](src/agentbox/runner/main.py)), MCP server querying Logfire API (not Postgres) ([mcp_server/server.py](src/agentbox/mcp_server/server.py)) |
-| **"Partner with the Pydantic AI team"** — agents built on Pydantic AI, help shape what "agents as a product" looks like | Agents use `pydantic-ai` framework ([runner/agents.py](src/agentbox/runner/agents.py)), DurableModel designed as reusable plugin that could be contributed back to pydantic-ai ([runner/durable_model.py](src/agentbox/runner/durable_model.py)) |
-
-### Additional "Who You Are" matches
-
-| JD Requirement | Evidence |
-|---|---|
-| **Built cloud infra for running agents or untrusted code** | Full platform: sandbox → scheduler → durable execution → observability |
-| **Containers & K8s security** | Docker + kind + gVisor + NetworkPolicy + RBAC |
-| **Multi-tenant isolation & credential scoping** | `tenant_id` in data model, scoped credentials, round-robin scheduling |
-| **Solid Python, concurrency, failure recovery** | async/await throughout, lease-based failure detection, retry logic |
-| **Genuine interest in AI engineering** | Built on Pydantic AI, durable execution for LLM agents, MCP tools |
 
 ---
 

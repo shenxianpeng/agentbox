@@ -299,9 +299,7 @@ async def test_replay_uses_checkpoints(pool, fake_model, call_count):
 
     # All steps should be replayed
     assert context2.replayed_count > 0, "Replay should have replayed steps"
-    assert context2.live_count == 0, (
-        f"Replay should have 0 live steps, got {context2.live_count}"
-    )
+    assert context2.live_count == 0, f"Replay should have 0 live steps, got {context2.live_count}"
 
     # The output should be the same
     assert str(result2.output) == str(first_data), (

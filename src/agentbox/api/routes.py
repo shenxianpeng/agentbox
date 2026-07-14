@@ -58,9 +58,7 @@ class CreateRunRequest(BaseModel):
     egress_allow: list[str] | None = Field(
         default=None, description="Additional allowed egress domains"
     )
-    tenant_id: str | None = Field(
-        default=None, description="Tenant ID (default tenant if omitted)"
-    )
+    tenant_id: str | None = Field(default=None, description="Tenant ID (default tenant if omitted)")
 
 
 class RunResponse(BaseModel):
@@ -174,9 +172,7 @@ async def read_checkpoints(
             "step_index": cp["step_index"],
             "kind": cp["kind"],
             "token_count": cp.get("token_count"),
-            "cost": (
-                float(cp["cost"]) if cp.get("cost") is not None else None
-            ),
+            "cost": (float(cp["cost"]) if cp.get("cost") is not None else None),
             "created_at": cp["created_at"].isoformat(),
         }
         for cp in checkpoints

@@ -155,9 +155,7 @@ async def handle_list_tools() -> list[types.Tool]:
 
 
 @server.call_tool()
-async def handle_call_tool(
-    name: str, arguments: dict[str, Any] | None
-) -> list[types.TextContent]:
+async def handle_call_tool(name: str, arguments: dict[str, Any] | None) -> list[types.TextContent]:
     """Handle MCP tool calls by querying Logfire telemetry."""
     if arguments is None:
         arguments = {}
@@ -280,10 +278,7 @@ async def _get_run_timeline(args: dict[str, Any]) -> list[types.TextContent]:
 
     lines = [f"## Timeline: {run_id}\n"]
     for i, trace in enumerate(traces):
-        lines.append(
-            f"{i+1}. **{trace.get('name', 'step')}** "
-            f"— {trace.get('duration', 0)}ms"
-        )
+        lines.append(f"{i + 1}. **{trace.get('name', 'step')}** — {trace.get('duration', 0)}ms")
 
     return [types.TextContent(type="text", text="\n".join(lines))]
 
@@ -323,9 +318,7 @@ async def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    logger.info(
-        "Starting AgentBox MCP server (Logfire telemetry backend)"
-    )
+    logger.info("Starting AgentBox MCP server (Logfire telemetry backend)")
 
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(

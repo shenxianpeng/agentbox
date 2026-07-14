@@ -4,9 +4,9 @@ A minimal open-source **agent platform** that runs untrusted, long-lived AI agen
 workloads in isolated sandboxes, with **durable (resumable) execution** backed by
 Postgres and **full observability** via Logfire/OpenTelemetry.
 
-We're building the infrastructure to run AI agents at scale — safely, reliably, and cheaply. Much of this is greenfield. 
-The goal is a platform that can run untrusted, long-lived, resource-hungry agent workloads — agentic workflows like 
-SRE investigators, issue-fixers, and findings agents that read a codebase, query live observability data, 
+We're building the infrastructure to run AI agents at scale — safely, reliably, and cheaply. Much of this is greenfield.
+The goal is a platform that can run untrusted, long-lived, resource-hungry agent workloads — agentic workflows like
+SRE investigators, issue-fixers, and findings agents that read a codebase, query live observability data,
 and open well-evidenced GitHub issues and PRs.
 
 > **Purpose**: portfolio project for Pydantic's *Agent Infrastructure Engineer* role.
@@ -63,7 +63,7 @@ and open well-evidenced GitHub issues and PRs.
         ▼                                                   │
   ┌─────────────────────────────┐      egress proxy         │
   │ sandbox container           │────► (allowlist only) ──► LLM API
-  │  runner.py                  │                            
+  │  runner.py                  │
   │  └─ Pydantic AI agent       │      writes checkpoints ──┘
   │     wrapped in durable layer│
   └─────────────────────────────┘
@@ -83,9 +83,9 @@ On restart, the agent code re-runs from the top but "fast-forwards" through
 completed steps, then continues live from the first missing checkpoint.
 
 **Credential scoping**: when a run is created, the control plane mints scoped
-credentials (e.g. a run-specific API key with a TTL equal to `max_attempts * expected_duration`, 
-or a temporary access token). The runner container only ever sees these scoped 
-credentials, never the master API keys. This limits the blast radius if a sandbox 
+credentials (e.g. a run-specific API key with a TTL equal to `max_attempts * expected_duration`,
+or a temporary access token). The runner container only ever sees these scoped
+credentials, never the master API keys. This limits the blast radius if a sandbox
 is compromised.
 
 **Multi-tenant data model**: every table carries an optional `tenant_id` column.
@@ -394,7 +394,7 @@ time is near-zero (warm pool). Documented in README with benchmark numbers.
 ### Step 2.2 — Cost tracking
 
 **Tasks**
-- `cost/tracker.py`: 
+- `cost/tracker.py`:
   - On each model call checkpoint, record `token_count` (from the LLM response) and
     compute an estimated cost using a configurable rate table (`COST_PER_1K_INPUT_TOKENS`,
     `COST_PER_1K_OUTPUT_TOKENS` per model).

@@ -50,13 +50,9 @@ async def store_scoped_credentials(
     Returns list of stored credential metadata dicts.
     Stores both the credential and a metadata-only entry for API responses.
     """
-    credential, scope, expires_at = mint_scoped_credentials(
-        agent_name, api_key, ttl_seconds
-    )
+    credential, scope, expires_at = mint_scoped_credentials(agent_name, api_key, ttl_seconds)
 
-    stored = await insert_scoped_credential(
-        pool, run_id, credential, scope, expires_at
-    )
+    stored = await insert_scoped_credential(pool, run_id, credential, scope, expires_at)
     return [stored]
 
 

@@ -178,9 +178,7 @@ async def main() -> int:
                 settings.model_name,
                 api_key=api_key,
                 base_url=(
-                    "https://api.deepseek.com/v1"
-                    if "deepseek" in settings.model_name
-                    else None
+                    "https://api.deepseek.com/v1" if "deepseek" in settings.model_name else None
                 ),
             )
         elif settings.anthropic_api_key:

@@ -158,9 +158,7 @@ class K8sBackend:
                 NAMESPACE,
                 label_selector=f"agentbox.run_id={run_id}",
             )
-            return any(
-                pod.status and pod.status.phase == "Running" for pod in pods.items
-            )
+            return any(pod.status and pod.status.phase == "Running" for pod in pods.items)
         except k8s.client.ApiException as exc:
             if exc.status == 404:
                 return False

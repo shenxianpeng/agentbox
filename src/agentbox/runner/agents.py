@@ -70,9 +70,7 @@ async def analyze_logs(service: str, duration_seconds: int = 10) -> str:
         {
             "critical": 1,
             "warnings": 2,
-            "details": [
-                f"Routine logs for {service}: no anomalies detected."
-            ],
+            "details": [f"Routine logs for {service}: no anomalies detected."],
         },
     )
 

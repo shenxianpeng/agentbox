@@ -33,8 +33,6 @@ CHECKPOINT_TIMEOUT = 60  # seconds
 RUN_COMPLETION_TIMEOUT = 120  # seconds
 
 
-
-
 @pytest.mark.asyncio
 async def test_kill_and_resume():
     """Kill a running agent mid-execution and verify it resumes correctly."""
@@ -99,9 +97,7 @@ async def test_kill_and_resume():
             )
 
         # Record how many model_call checkpoints exist before kill
-        model_calls_before = sum(
-            1 for cp in checkpoints if cp["kind"] == "model_call"
-        )
+        model_calls_before = sum(1 for cp in checkpoints if cp["kind"] == "model_call")
         logger.info(
             "Model calls before kill: %d (total checkpoints: %d)",
             model_calls_before,
@@ -118,16 +114,12 @@ async def test_kill_and_resume():
             logger.warning("Container not found by label, trying all containers...")
             containers = docker_client.containers.list(all=True)
             containers = [
-                c
-                for c in containers
-                if any("agentbox" in (tag or "") for tag in c.image.tags)
+                c for c in containers if any("agentbox" in (tag or "") for tag in c.image.tags)
             ]
 
         if containers:
             container = containers[0]
-            logger.info(
-                "Killing container %s for run %s", container.short_id, run_id
-            )
+            logger.info("Killing container %s for run %s", container.short_id, run_id)
             container.kill()
             container.remove(force=True)
             logger.info("Container killed and removed")
@@ -159,9 +151,7 @@ async def test_kill_and_resume():
                 final_result = run_data.get("result")
                 break
             elif final_status == "failed":
-                pytest.fail(
-                    f"Run {run_id} failed after kill: {run_data.get('error')}"
-                )
+                pytest.fail(f"Run {run_id} failed after kill: {run_data.get('error')}")
 
             await asyncio.sleep(3)
         else:
@@ -180,12 +170,9 @@ async def test_kill_and_resume():
         model_calls_after = sum(
             1
             for cp in all_checkpoints
-            if cp["kind"] == "model_call"
-            and cp["step_index"] >= checkpoint_count
+            if cp["kind"] == "model_call" and cp["step_index"] >= checkpoint_count
         )
-        total_model_calls = sum(
-            1 for cp in all_checkpoints if cp["kind"] == "model_call"
-        )
+        total_model_calls = sum(1 for cp in all_checkpoints if cp["kind"] == "model_call")
 
         logger.info(
             "Final state: status=%s attempt=%d checkpoints=%d "

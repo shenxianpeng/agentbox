@@ -3,6 +3,28 @@ name = "agentbox"
 version = "0.1.0"
 description = "A minimal open-source agent platform — durable execution, sandboxed agents, Logfire tracing."
 requires-python = ">=3.12"
+authors = [
+    { name = "shenxianpeng" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: Pydantic",
+    "Framework :: FastAPI",
+]
 dependencies = [
     "asyncpg>=0.31.0",
     "docker>=7.2.0",
@@ -18,8 +40,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.0.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-cov>=6.1.0",
     "ruff>=0.15.21",
 ]
 
@@ -41,3 +65,4 @@ select = ["E", "F", "I", "N", "W", "UP"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+addopts = "--cov=agentbox --cov-report=term-missing"

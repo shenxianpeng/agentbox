@@ -138,9 +138,7 @@ async def get_dead_leases(pool: asyncpg.Pool) -> list[dict]:
 async def get_running_count(pool: asyncpg.Pool) -> int:
     """Count currently running runs."""
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT COUNT(*) as cnt FROM runs WHERE status = 'running'"
-        )
+        row = await conn.fetchrow("SELECT COUNT(*) as cnt FROM runs WHERE status = 'running'")
     return row["cnt"] if row else 0
 
 
@@ -178,9 +176,7 @@ async def launcher_loop(pool: asyncpg.Pool, backend: Any) -> None:
                 if not claimed:
                     logger.debug("No queued runs found")
             else:
-                logger.debug(
-                    "At max concurrent runs (%d), waiting...", MAX_CONCURRENT_RUNS
-                )
+                logger.debug("At max concurrent runs (%d), waiting...", MAX_CONCURRENT_RUNS)
 
         except Exception as exc:
             logger.exception("Error in launcher poll loop: %s", exc)
@@ -188,9 +184,7 @@ async def launcher_loop(pool: asyncpg.Pool, backend: Any) -> None:
         await asyncio.sleep(POLL_INTERVAL)
 
 
-async def _handle_claimed_run(
-    pool: asyncpg.Pool, backend: Any, run: dict
-) -> None:
+async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> None:
     """Handle a claimed run: create lease, inject credentials, start container."""
     run_id = str(run["id"])
     logger.info(
@@ -215,7 +209,7 @@ async def _handle_claimed_run(
 
     creds_json = {}
     for row in cred_rows:
-        creds_json[f'llm:{run["agent_name"]}'] = {
+        creds_json[f"llm:{run['agent_name']}"] = {
             "credential": row["credential"],
             "expires_at": (
                 row["expires_at"].isoformat()
@@ -261,9 +255,7 @@ async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:
                 try:
                     backend.kill_run(run_id)
                 except Exception as exc:
-                    logger.warning(
-                        "Failed to kill container for run %s: %s", run_id, exc
-                    )
+                    logger.warning("Failed to kill container for run %s: %s", run_id, exc)
 
                 # Release lease
                 await release_lease(pool, run_id)

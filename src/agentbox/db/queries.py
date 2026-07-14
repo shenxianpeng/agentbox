@@ -72,9 +72,7 @@ async def get_run(pool: asyncpg.Pool, run_id: str) -> dict[str, Any] | None:
 # ── Checkpoints ─────────────────────────────────────────────
 
 
-async def get_checkpoints(
-    pool: asyncpg.Pool, run_id: str
-) -> list[dict[str, Any]]:
+async def get_checkpoints(pool: asyncpg.Pool, run_id: str) -> list[dict[str, Any]]:
     """Fetch checkpoints for a run (without full payload)."""
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -115,9 +113,7 @@ async def insert_scoped_credential(
     return dict(row)
 
 
-async def get_scoped_credentials(
-    pool: asyncpg.Pool, run_id: str
-) -> list[dict[str, Any]]:
+async def get_scoped_credentials(pool: asyncpg.Pool, run_id: str) -> list[dict[str, Any]]:
     """Fetch all scoped credentials for a run."""
     async with pool.acquire() as conn:
         rows = await conn.fetch(

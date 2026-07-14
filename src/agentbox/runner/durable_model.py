@@ -131,9 +131,7 @@ class DurableModel(Model):
         fingerprint = _messages_fingerprint(messages)
 
         async def _do_request() -> ModelResponse:
-            response = await self._inner.request(
-                messages, model_settings, model_request_parameters
-            )
+            response = await self._inner.request(messages, model_settings, model_request_parameters)
             return response
 
         result = await self._context.step(
@@ -167,9 +165,7 @@ class DurableModel(Model):
                     model_name=result.get("model_name", ""),
                 )
             except (TypeError, ValueError) as exc:
-                logger.warning(
-                    "Failed to deserialize ModelResponse from checkpoint: %s", exc
-                )
+                logger.warning("Failed to deserialize ModelResponse from checkpoint: %s", exc)
 
         return result
 

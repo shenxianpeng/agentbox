@@ -6,9 +6,38 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  COLUMNS: 150
+
+permissions:
+  contents: read
+
 jobs:
-  lint-and-test:
+  lint:
+    name: lint
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-suffix: lint
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint with ruff
+        run: uv run ruff check src/ tests/
+
+  test:
+    name: test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
     services:
       postgres:
         image: postgres:16-alpine
@@ -30,13 +59,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: test-${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync --all-extras --dev
-
-      - name: Lint with ruff
-        run: uv run ruff check src/ tests/
 
       - name: Run migrations
         run: uv run python -m agentbox.db.migrate
@@ -44,7 +72,14 @@ jobs:
           DATABASE_URL: postgresql://agentbox:agentbox@localhost:5432/agentbox
 
       - name: Test with pytest
-        run: uv run pytest tests/ -v
+        run: uv run pytest tests/ -v --cov=agentbox --cov-report=xml --cov-report=term
         env:
           DATABASE_URL: postgresql://agentbox:agentbox@localhost:5432/agentbox
           AGENTBOX_API_TOKEN: test-token
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false

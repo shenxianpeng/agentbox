@@ -44,9 +44,7 @@ async def apply_migration(pool: asyncpg.Pool, path: Path) -> None:
                 stmt = stmt.strip()
                 if stmt:
                     await conn.execute(stmt)
-            await conn.execute(
-                "INSERT INTO schema_migrations (version) VALUES ($1)", version
-            )
+            await conn.execute("INSERT INTO schema_migrations (version) VALUES ($1)", version)
     print(f"  ✓ Applied {version}")
 
 

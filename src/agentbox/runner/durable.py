@@ -38,6 +38,7 @@ class CheckpointStore(Protocol):
     def acquire(self) -> Any: ...
     async def close(self) -> None: ...
 
+
 logger = logging.getLogger(__name__)
 
 JSONable = TypeVar("JSONable")
