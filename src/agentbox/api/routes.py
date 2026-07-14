@@ -92,6 +92,18 @@ class CheckpointResponse(BaseModel):
     created_at: str
 
 
+class CostResponse(BaseModel):
+    run_id: str
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    llm_cost: float
+    compute_cost: float
+    duration_seconds: float
+    model_calls: int
+    total_estimated_usd: float
+
+
 # ── Routes ──────────────────────────────────────────────────
 
 
@@ -169,6 +181,20 @@ async def read_checkpoints(
         }
         for cp in checkpoints
     ]
+
+
+@router.get("/runs/{run_id}/cost", response_model=CostResponse)
+async def read_run_cost(
+    run_id: str,
+    pool: PoolDep,
+) -> Any:
+    """Get cost breakdown for a run."""
+    from agentbox.cost.tracker import get_run_cost
+
+    cost = await get_run_cost(pool, run_id)
+    if cost is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    return cost
 
 
 # ── Helpers ─────────────────────────────────────────────────

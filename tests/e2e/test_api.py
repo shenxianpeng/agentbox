@@ -105,6 +105,32 @@ async def test_get_checkpoints_empty(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_run_cost_endpoint(client: AsyncClient):
+    """GET /runs/{id}/cost returns cost breakdown."""
+    response = await client.post(
+        "/runs",
+        json={
+            "agent_name": "cost-test",
+            "prompt": "Test cost endpoint.",
+        },
+    )
+    assert response.status_code == 201
+    run_id = response.json()["id"]
+
+    resp = await client.get(f"/runs/{run_id}/cost")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["run_id"] == run_id
+    assert data["input_tokens"] >= 0
+    assert data["output_tokens"] >= 0
+    assert data["total_tokens"] >= 0
+    assert data["llm_cost"] >= 0
+    assert data["total_estimated_usd"] >= 0
+    assert "model_calls" in data
+    assert "duration_seconds" in data
+
+
+@pytest.mark.asyncio
 async def test_unauthorized_access():
     """Requests without valid token are rejected."""
     # Need pool setup for this too since routes use PoolDep
