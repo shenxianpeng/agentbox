@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install uv for dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copy project files
+COPY pyproject.toml uv.lock ./
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+
+# Install dependencies and package
+RUN uv sync --frozen --no-dev
+
+# Entrypoint
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["uv", "run", "python", "-m", "agentbox.runner.main"]
