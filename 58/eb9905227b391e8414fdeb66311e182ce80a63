@@ -1,0 +1,24 @@
+tests/e2e/test_kill_and_resume.py
+  s_e8c3674ff155ea::t_c5aad475942835 123
+  s_e8c3674ff155ea::t_47c9e9e2d549ee 39
+  s_e8c3674ff155ea::t_1a0a602e038498 1-38,40-41,46-122,124-229
+  s_e8c3674ff155ea::t_124d190c9314d2 42-45
+Makefile
+  s_e8c3674ff155ea::t_a8109fff3616f5 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "58eb9905227b391e8414fdeb66311e182ce80a63",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
