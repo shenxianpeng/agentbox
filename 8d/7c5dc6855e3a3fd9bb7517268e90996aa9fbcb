@@ -1,0 +1,37 @@
+src/agentbox/runner/durable_model.py
+  s_e8c3674ff155ea::t_6e842de70c38cf 1-33,35-144,147-148,169-227
+  s_e8c3674ff155ea::t_5be2b28cd9ee2d 145-146,150-154,157,160-168
+  s_e8c3674ff155ea::t_5a72f067aab8ce 155-156,158-159
+  s_e8c3674ff155ea::t_3506b7a59216a1 34
+  s_e8c3674ff155ea::t_d689654144c16d 149
+src/agentbox/runner/durable.py
+  s_e8c3674ff155ea::t_0a27637b420ef2 26,29-39
+  s_e8c3674ff155ea::t_6efab49e0c2bc5 87
+  s_e8c3674ff155ea::t_9b8265a9e65d36 176-177
+  s_e8c3674ff155ea::t_c59e971eb9fec7 81-84
+  s_e8c3674ff155ea::t_9019a099cec96d 1-25,27-28,40-80,85-86,88-175,178-207
+src/agentbox/runner/durable_tool.py
+  s_e8c3674ff155ea::t_a309b14abd3bf7 1-72
+tests/unit/test_durable.py
+  s_e8c3674ff155ea::t_9e4cf5d287fc7c 252,275,307-308
+  s_e8c3674ff155ea::t_fe412e412ba948 54-57,121,134-140,154-157,162-168,170,172,177-179,183-185,187,283,328-329,332,351-356,363,367
+  s_e8c3674ff155ea::t_657929e7d43dd3 26
+  s_e8c3674ff155ea::t_17da94a273c722 1-25,27-53,58-120,122-133,141-153,158-161,169,186,188-251,253-274,276-282,284-306,309-327,330-331,333-350,357-362,364-366,368-379
+  s_e8c3674ff155ea::t_4cf793480a1e40 171,173-176,180-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "8d7c5dc6855e3a3fd9bb7517268e90996aa9fbcb",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
