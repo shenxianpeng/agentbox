@@ -1,0 +1,61 @@
+# Job template for agent runner pods.
+# The launcher creates Jobs from this template, injecting:
+#   - RUN_ID as env var
+#   - Scoped credentials via a temporary Secret (not as plain env vars)
+#   - Resource limits
+#
+# backoffLimit=0 because AgentBox handles retries via the Postgres checkpoint layer.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: run-<RUN_ID>
+  namespace: agentbox
+  labels:
+    agentbox.run_id: "<RUN_ID>"
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300  # clean up 5 min after completion
+  template:
+    metadata:
+      labels:
+        agentbox.run_id: "<RUN_ID>"
+    spec:
+      # Optional: runtimeClassName: gvisor  # Step 2.4
+      containers:
+        - name: runner
+          image: <RUNNER_IMAGE>
+          env:
+            - name: RUN_ID
+              value: "<RUN_ID>"
+            - name: DATABASE_URL
+              value: "<DATABASE_URL>"
+            - name: MODEL_NAME
+              value: "<MODEL_NAME>"
+            - name: LOGFIRE_TOKEN
+              value: "<LOGFIRE_TOKEN>"
+            - name: AGENTBOX_CREDENTIALS_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: creds-<RUN_ID>
+                  key: credentials.json
+            - name: HTTP_PROXY
+              value: "<PROXY_URL>"
+            - name: HTTPS_PROXY
+              value: "<PROXY_URL>"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      restartPolicy: Never
+  # Note: the Secret creds-<RUN_ID> must be created before the Job
+  # and deleted after the Job completes (handled by the launcher).

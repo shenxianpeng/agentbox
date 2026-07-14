@@ -276,14 +276,19 @@ async def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    logger.info("Initializing launcher...")
+    logger.info("Initializing launcher (backend=%s)...", settings.agentbox_backend)
 
     pool = await create_pool(settings.database_url)
 
-    # Initialize Docker backend
-    from agentbox.launcher.backend_docker import DockerBackend
+    # Select backend based on configuration
+    if settings.agentbox_backend == "k8s":
+        from agentbox.launcher.backend_k8s import K8sBackend
 
-    backend = DockerBackend()
+        backend = K8sBackend()
+    else:
+        from agentbox.launcher.backend_docker import DockerBackend
+
+        backend = DockerBackend()
 
     # Run both loops concurrently
     await asyncio.gather(
