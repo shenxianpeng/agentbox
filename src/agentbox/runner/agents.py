@@ -149,6 +149,46 @@ async def open_github_issue(
     )
 
 
+async def fetch_url(url: str) -> str:
+    """Fetch a URL and return its content.
+
+    This tool is used to test egress control: if the egress proxy blocks
+    the request, the tool will return an error message.
+
+    Args:
+        url: The URL to fetch (e.g. 'https://example.com').
+
+    Returns:
+        The response content or an error message.
+    """
+    logger.info("fetch_url: fetching %s", url)
+    try:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, follow_redirects=True)
+            content = response.text[:2000]  # Truncate to 2000 chars
+            logger.info(
+                "fetch_url: got response %d from %s",
+                response.status_code,
+                url,
+            )
+            return (
+                f"## Fetch Result: {url}\n\n"
+                f"- **Status Code**: {response.status_code}\n"
+                f"- **Content Length**: {len(response.text)} bytes\n\n"
+                f"```\n{content}\n```"
+            )
+    except Exception as exc:
+        logger.warning("fetch_url: failed to fetch %s: %s", url, exc)
+        return (
+            f"## Fetch Failed: {url}\n\n"
+            f"- **Error**: {type(exc).__name__}: {exc}\n\n"
+            f"This may be due to egress restrictions. "
+            f"The sandbox network only allows connections to allowlisted domains.\n"
+        )
+
+
 # ── Tool configurations ────────────────────────────────────
 
 DEMO_AGENT_SYSTEM_PROMPT = """You are an **SRE Incident Investigator** AI agent.
@@ -185,6 +225,6 @@ def create_incident_investigator(
     """
     return Agent(
         model,
-        tools=tools or [analyze_logs, fetch_metrics, open_github_issue],
+        tools=tools or [analyze_logs, fetch_metrics, open_github_issue, fetch_url],
         system_prompt=DEMO_AGENT_SYSTEM_PROMPT,
     )

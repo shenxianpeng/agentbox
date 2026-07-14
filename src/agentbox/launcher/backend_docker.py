@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from docker.models.containers import Container
 
@@ -32,6 +33,10 @@ class DockerBackend:
 
         Returns the container ID.
         """
+        proxy_host = os.environ.get("EGRESS_PROXY_HOST", "egress-proxy")
+        proxy_port = os.environ.get("EGRESS_PROXY_PORT", "8888")
+        proxy_url = f"http://{proxy_host}:{proxy_port}"
+
         env = {
             "RUN_ID": run_id,
             "DATABASE_URL": database_url,
@@ -39,6 +44,9 @@ class DockerBackend:
             "MODEL_NAME": settings.model_name,
             "LOGFIRE_TOKEN": settings.logfire_token,
             "PYTHONUNBUFFERED": "1",
+            "HTTP_PROXY": proxy_url,
+            "HTTPS_PROXY": proxy_url,
+            "NO_PROXY": "localhost,127.0.0.1,0.0.0.0",
         }
         if env_overrides:
             env.update(env_overrides)

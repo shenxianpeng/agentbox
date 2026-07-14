@@ -37,6 +37,19 @@ services:
     networks:
       - agentbox-control
 
+  egress-proxy:
+    image: vimagick/tinyproxy:latest
+    cap_add:
+      - NET_ADMIN
+    tmpfs: /run
+    volumes:
+      - ./docker/tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro
+    networks:
+      - agentbox-control
+      - agentbox-internal
+    depends_on:
+      - postgres
+
   launcher:
     build:
       context: .
@@ -50,9 +63,10 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+      EGRESS_PROXY_HOST: egress-proxy
+      EGRESS_PROXY_PORT: "8888"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - egress-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
