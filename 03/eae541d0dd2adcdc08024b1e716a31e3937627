@@ -1,0 +1,37 @@
+src/agentbox/db/queries.py
+  s_e8c3674ff155ea::t_11c0204939df40 1-132
+src/agentbox/api/main.py
+  s_e8c3674ff155ea::t_f669c7f280548f 1-66
+pyproject.toml
+  s_e8c3674ff155ea::t_b6405afff03fcf 40
+src/agentbox/secrets/scoper.py
+  s_e8c3674ff155ea::t_890bfeea2b98d9 1-102
+src/agentbox/api/routes.py
+  s_e8c3674ff155ea::t_57a6805bcf26dd 48-49,51,105
+  s_e8c3674ff155ea::t_96ced378234130 136
+  s_e8c3674ff155ea::t_620ec5b74f2324 1-5,7,10-19,23-38,44-45,52-100,102-104,106,109-132,134-135,137-148,150-181,183-213
+  s_e8c3674ff155ea::t_67314de1181bc7 182
+  s_e8c3674ff155ea::t_7662074ed68679 6,8-9,20-22,39-43,46-47,50,101,107-108,133,149
+tests/e2e/test_api.py
+  s_e8c3674ff155ea::t_afa75cfbc6938d 114,116-123
+  s_e8c3674ff155ea::t_9b2c3b4b10e0e7 15,26-29,36-38,115
+  s_e8c3674ff155ea::t_524f8867db0809 1-14,16-18,20,23-24,30-35,39-44,46-73,75-84,86-92,94-101,103-107,109
+  s_e8c3674ff155ea::t_15cf60690fcc58 19,21-22,25,108,110-113,124-125
+  s_e8c3674ff155ea::t_c914959a115637 45,74,85,93,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "03eae541d0dd2adcdc08024b1e716a31e3937627",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
