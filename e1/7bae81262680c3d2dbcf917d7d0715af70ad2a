@@ -1,0 +1,27 @@
+src/agentbox/runner/agents.py
+  s_e8c3674ff155ea::t_3333fa913c7540 152-191
+  s_e8c3674ff155ea::t_424e0e0902f087 228
+docker/tinyproxy.conf
+  s_e8c3674ff155ea::t_a24f78c2fe11b9 1-24
+src/agentbox/launcher/backend_docker.py
+  s_e8c3674ff155ea::t_8c04c5acd45165 6
+  s_e8c3674ff155ea::t_cd1f4f9b1141c6 36-39,47-49
+docker-compose.yml
+  s_e8c3674ff155ea::t_9b7d23591f0951 40-52,66-67,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "e17bae81262680c3d2dbcf917d7d0715af70ad2a",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
