@@ -33,6 +33,13 @@ LEASE_TTL_SECONDS = 30  # lease considered dead after this long
 MAX_CONCURRENT_RUNS = 3
 
 
+async def get_tenant_ids(pool: asyncpg.Pool) -> list[str]:
+    """Get all tenant IDs for round-robin scheduling."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id FROM tenants ORDER BY created_at ASC")
+    return [str(r["id"]) for r in rows]
+
+
 async def claim_next_run(
     pool: asyncpg.Pool,
     tenant_id: str | None = None,
@@ -146,65 +153,30 @@ async def launcher_loop(pool: asyncpg.Pool, backend: Any) -> None:
         MAX_CONCURRENT_RUNS,
     )
 
+    tenant_round_robin_index = 0
+
     while True:
         try:
             running_count = await get_running_count(pool)
             if running_count < MAX_CONCURRENT_RUNS:
-                run = await claim_next_run(pool)
-                if run:
-                    run_id = str(run["id"])
-                    logger.info(
-                        "Claimed run %s (agent=%s, attempt=%d/%d)",
-                        run_id,
-                        run["agent_name"],
-                        run["attempt"],
-                        run["max_attempts"],
-                    )
+                # Round-robin across tenants for fairness
+                tenants = await get_tenant_ids(pool)
+                if not tenants:
+                    tenants = ["00000000-0000-0000-0000-000000000001"]
 
-                    # Create lease
-                    await create_lease(pool, run_id)
+                claimed = False
+                for _ in range(len(tenants)):
+                    tenant_id = tenants[tenant_round_robin_index % len(tenants)]
+                    tenant_round_robin_index += 1
 
-                    # Read scoped credentials directly
-                    async with pool.acquire() as conn:
-                        cred_rows = await conn.fetch(
-                            """
-                            SELECT scope, credential, expires_at
-                            FROM scoped_credentials
-                            WHERE run_id = $1::uuid
-                            """,
-                            run_id,
-                        )
+                    run = await claim_next_run(pool, tenant_id)
+                    if run:
+                        await _handle_claimed_run(pool, backend, run)
+                        claimed = True
+                        break
 
-                    # Build credentials JSON for the runner
-                    creds_json = {}
-                    for row in cred_rows:
-                        creds_json[f'llm:{run["agent_name"]}'] = {
-                            "credential": row["credential"],
-                            "expires_at": (
-                                row["expires_at"].isoformat()
-                                if hasattr(row["expires_at"], "isoformat")
-                                else str(row["expires_at"])
-                            ),
-                        }
-
-                    # Start container with scoped credentials (not master key)
-                    try:
-                        backend.start_run(
-                            run_id=run_id,
-                            database_url=settings.database_url,
-                            scoped_credentials=json.dumps(creds_json),
-                        )
-                    except Exception as exc:
-                        logger.exception(
-                            "Failed to start container for run %s: %s", run_id, exc
-                        )
-                        await release_lease(pool, run_id)
-                        if run["attempt"] >= run["max_attempts"]:
-                            await fail_run(
-                                pool, run_id, f"Container start failed: {exc}"
-                            )
-                        else:
-                            await requeue_run(pool, run_id)
+                if not claimed:
+                    logger.debug("No queued runs found")
             else:
                 logger.debug(
                     "At max concurrent runs (%d), waiting...", MAX_CONCURRENT_RUNS
@@ -214,6 +186,57 @@ async def launcher_loop(pool: asyncpg.Pool, backend: Any) -> None:
             logger.exception("Error in launcher poll loop: %s", exc)
 
         await asyncio.sleep(POLL_INTERVAL)
+
+
+async def _handle_claimed_run(
+    pool: asyncpg.Pool, backend: Any, run: dict
+) -> None:
+    """Handle a claimed run: create lease, inject credentials, start container."""
+    run_id = str(run["id"])
+    logger.info(
+        "Claimed run %s (agent=%s, attempt=%d/%d)",
+        run_id,
+        run["agent_name"],
+        run["attempt"],
+        run["max_attempts"],
+    )
+
+    await create_lease(pool, run_id)
+
+    async with pool.acquire() as conn:
+        cred_rows = await conn.fetch(
+            """
+            SELECT scope, credential, expires_at
+            FROM scoped_credentials
+            WHERE run_id = $1::uuid
+            """,
+            run_id,
+        )
+
+    creds_json = {}
+    for row in cred_rows:
+        creds_json[f'llm:{run["agent_name"]}'] = {
+            "credential": row["credential"],
+            "expires_at": (
+                row["expires_at"].isoformat()
+                if hasattr(row["expires_at"], "isoformat")
+                else str(row["expires_at"])
+            ),
+        }
+
+    try:
+        backend.start_run(
+            run_id=run_id,
+            database_url=settings.database_url,
+            scoped_credentials=json.dumps(creds_json),
+        )
+    except Exception as exc:
+        logger.exception("Failed to start container for run %s: %s", run_id, exc)
+        await release_lease(pool, run_id)
+        if run["attempt"] >= run["max_attempts"]:
+            await fail_run(pool, run_id, f"Container start failed: {exc}")
+        else:
+            await requeue_run(pool, run_id)
 
 
 async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:

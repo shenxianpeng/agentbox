@@ -1,0 +1,32 @@
+# NetworkPolicy for the agentbox namespace
+# Default-deny egress for runner pods; allow DNS + proxy only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: agentbox
+spec:
+  podSelector:
+    matchLabels:
+      agentbox.run_id: "*"
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow traffic to egress proxy
+    - to:
+        - podSelector:
+            matchLabels:
+              app: egress-proxy
+    # Allow traffic to Postgres (if in-cluster)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+          ports:
+            - port: 5432

@@ -1,0 +1,31 @@
+# Resource quota for the agentbox namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: agentbox-quota
+  namespace: agentbox
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: "4Gi"
+    limits.cpu: "8"
+    limits.memory: "8Gi"
+    pods: "10"
+    count/jobs.batch: "10"
+    count/secrets: "20"
+---
+# Default resource limits for pods without explicit limits
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: agentbox-limits
+  namespace: agentbox
+spec:
+  limits:
+    - default:
+        cpu: "1"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "500m"
+        memory: "256Mi"
+      type: Container
