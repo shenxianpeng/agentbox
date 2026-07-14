@@ -119,6 +119,35 @@ class DockerBackend:
         except docker.errors.APIError:
             return "[Failed to fetch container logs]"
 
+    def create_warm_container(self) -> str:
+        """Create a pre-initialized container for the warm pool."""
+        container: Container = self._client.containers.run(
+            image=settings.runner_image,
+            labels={"agentbox.warm": "true"},
+            detach=True,
+            network=NETWORK_NAME,
+            cpu_period=100000,
+            cpu_quota=100000,
+            mem_limit="512m",
+            pids_limit=100,
+            read_only=True,
+            cap_add=[],
+            command=["sleep", "infinity"],
+        )
+        logger.info("Created warm container %s", container.short_id)
+        return container.id
+
+    def kill(self, container_id: str) -> None:
+        """Kill a container by ID (for warm pool cleanup)."""
+        try:
+            c = self._client.containers.get(container_id)
+            c.kill()
+            c.remove(force=True)
+        except docker.errors.NotFound:
+            pass
+        except docker.errors.APIError:
+            logger.exception("Failed to kill %s", container_id[:12])
+
     def _find_containers(
         self,
         run_id: str,
