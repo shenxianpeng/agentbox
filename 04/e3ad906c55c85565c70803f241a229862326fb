@@ -1,0 +1,27 @@
+src/agentbox/runner/agents.py
+  s_e8c3674ff155ea::t_b77e05208bb827 1-69,77-190
+  s_e8c3674ff155ea::t_2fbc8f889bc8fe 70-76
+src/agentbox/runner/credentials.py
+  s_e8c3674ff155ea::t_a0ed744295d2ee 1-71
+src/agentbox/runner/main.py
+  s_e8c3674ff155ea::t_0f0c1708ec37c3 1-179,185-264
+  s_e8c3674ff155ea::t_9cdf25892da826 180-184
+docker/Dockerfile.runner
+  s_e8c3674ff155ea::t_d16596f8394fbf 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "04e3ad906c55c85565c70803f241a229862326fb",
+  "prompts": {},
+  "sessions": {
+    "s_e8c3674ff155ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6216-b9af-76a7-913e-bd885d76d6d9",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
