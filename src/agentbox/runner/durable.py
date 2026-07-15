@@ -26,6 +26,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any, Protocol, TypeVar
 
 import asyncpg
+import logfire
 
 
 class CheckpointStore(Protocol):
@@ -150,16 +151,22 @@ class DurableContext:
 
             if row is not None:
                 # Replay: return stored result without calling fn
-                if fingerprint is not None and row["fingerprint"] != fingerprint:
-                    logger.warning(
-                        "Fingerprint mismatch at step %d (run %s): "
-                        "expected %s, got %s. "
-                        "This indicates non-determinism in the agent.",
-                        idx,
-                        self._run_id,
-                        fingerprint,
-                        row["fingerprint"],
-                    )
+                with logfire.span(
+                    "durable-step",
+                    run_id=self._run_id,
+                    step_index=idx,
+                    kind=kind,
+                    replayed=True,
+                ):
+                    if fingerprint is not None and row["fingerprint"] != fingerprint:
+                        logfire.warn(
+                            "Fingerprint mismatch at step {idx} (run {run_id}): "
+                            "expected {expected}, got {got}",
+                            idx=idx,
+                            run_id=self._run_id,
+                            expected=fingerprint,
+                            got=row["fingerprint"],
+                        )
 
                 self._replayed_count += 1
                 payload_data = row["payload"]
@@ -168,7 +175,14 @@ class DurableContext:
                 return payload_data
 
             # Live execution
-            result = await fn()
+            with logfire.span(
+                "durable-step",
+                run_id=self._run_id,
+                step_index=idx,
+                kind=kind,
+                replayed=False,
+            ):
+                result = await fn()
             serialized = _serialize_payload(result)
 
             # Store checkpoint (same connection)

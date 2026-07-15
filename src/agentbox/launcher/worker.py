@@ -21,6 +21,7 @@ import uuid
 from typing import Any
 
 import asyncpg
+import logfire
 
 from agentbox.db.queries import create_pool
 from agentbox.settings import settings
@@ -297,40 +298,46 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
         run["max_attempts"],
     )
 
-    await create_lease(pool, run_id)
+    with logfire.span(
+        "launcher-claim",
+        run_id=run_id,
+        agent=run["agent_name"],
+        attempt=run["attempt"],
+    ):
+        await create_lease(pool, run_id)
 
-    # Fetch scoped credentials (per-run token) from DB
-    creds = await _fetch_scoped_credentials(pool, run_id)
+        # Fetch scoped credentials (per-run token) from DB
+        creds = await _fetch_scoped_credentials(pool, run_id)
 
-    # Register the real API key with the credential proxy
-    key_info = _get_llm_api_key_and_base_url()
-    if key_info:
-        real_api_key, base_url = key_info
-        # Get the first per-run token from credentials
-        for scope_key, cred_info in creds.items():
-            per_run_token = cred_info["credential"]
-            await _register_with_credential_proxy(per_run_token, real_api_key, base_url)
-            break
-    else:
-        logger.warning("No LLM API key configured — runs will fail")
-
-    try:
-        backend.start_run(
-            run_id=run_id,
-            database_url=settings.database_url,
-            scoped_credentials=json.dumps(creds),
-            credential_proxy_url=settings.credential_proxy_url,
-        )
-    except Exception as exc:
-        logger.exception("Failed to start container for run %s: %s", run_id, exc)
-        # Clean up the key mapping
-        for scope_key, cred_info in creds.items():
-            await _unregister_from_credential_proxy(cred_info["credential"])
-        await release_lease(pool, run_id)
-        if run["attempt"] >= run["max_attempts"]:
-            await fail_run(pool, run_id, f"Container start failed: {exc}")
+        # Register the real API key with the credential proxy
+        key_info = _get_llm_api_key_and_base_url()
+        if key_info:
+            real_api_key, base_url = key_info
+            # Get the first per-run token from credentials
+            for scope_key, cred_info in creds.items():
+                per_run_token = cred_info["credential"]
+                await _register_with_credential_proxy(per_run_token, real_api_key, base_url)
+                break
         else:
-            await requeue_run(pool, run_id)
+            logger.warning("No LLM API key configured — runs will fail")
+
+        try:
+            backend.start_run(
+                run_id=run_id,
+                database_url=settings.database_url,
+                scoped_credentials=json.dumps(creds),
+                credential_proxy_url=settings.credential_proxy_url,
+            )
+        except Exception as exc:
+            logger.exception("Failed to start container for run %s: %s", run_id, exc)
+            # Clean up the key mapping
+            for scope_key, cred_info in creds.items():
+                await _unregister_from_credential_proxy(cred_info["credential"])
+            await release_lease(pool, run_id)
+            if run["attempt"] >= run["max_attempts"]:
+                await fail_run(pool, run_id, f"Container start failed: {exc}")
+            else:
+                await requeue_run(pool, run_id)
 
 
 async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:
@@ -351,32 +358,33 @@ async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:
                     lease["heartbeat_at"],
                 )
 
-                # Kill the container
-                try:
-                    backend.kill_run(run_id)
-                except Exception as exc:
-                    logger.warning("Failed to kill container for run %s: %s", run_id, exc)
+                with logfire.span(
+                    "launcher-reap",
+                    run_id=run_id,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                ):
+                    # Kill the container
+                    try:
+                        backend.kill_run(run_id)
+                    except Exception as exc:
+                        logger.warning("Failed to kill container for run %s: %s", run_id, exc)
 
-                # Release lease
-                await release_lease(pool, run_id)
+                    # Release lease
+                    await release_lease(pool, run_id)
 
-                # Requeue or fail
-                if attempt >= max_attempts:
-                    await fail_run(
-                        pool,
-                        run_id,
-                        f"Run exceeded max attempts ({max_attempts}). "
-                        f"Last lease heartbeat: {lease['heartbeat_at']}",
-                    )
-                    logger.info("Run %s failed permanently (max attempts)", run_id)
-                else:
-                    await requeue_run(pool, run_id)
-                    logger.info(
-                        "Run %s requeued for retry (attempt %d/%d)",
-                        run_id,
-                        attempt,
-                        max_attempts,
-                    )
+                    # Requeue or fail
+                    if attempt >= max_attempts:
+                        await fail_run(
+                            pool,
+                            run_id,
+                            f"Run exceeded max attempts ({max_attempts}). "
+                            f"Last lease heartbeat: {lease['heartbeat_at']}",
+                        )
+                        logfire.info("Run failed permanently (max attempts)", run_id=run_id)
+                    else:
+                        await requeue_run(pool, run_id)
+                        logfire.info("Run requeued for retry", run_id=run_id, attempt=attempt)
 
         except Exception as exc:
             logger.exception("Error in reaper loop: %s", exc)
