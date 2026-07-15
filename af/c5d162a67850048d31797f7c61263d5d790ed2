@@ -1,0 +1,23 @@
+src/agentbox/launcher/backend_k8s.py
+  s_2b9cf1c36395a7::t_4d821ecb69622c 168-169
+  s_2b9cf1c36395a7::t_8bdff472df2611 115-119
+  s_2b9cf1c36395a7::t_11fda78da040b1 45,49-52,57-62,80-101,103,137,143,149-150,167
+k8s/job-template.yaml
+  s_2b9cf1c36395a7::t_23209772c170ad 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "afc5d162a67850048d31797f7c61263d5d790ed2",
+  "prompts": {},
+  "sessions": {
+    "s_2b9cf1c36395a7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6721-dd72-7a6f-9284-b2ef30a3af95",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
