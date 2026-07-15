@@ -137,7 +137,9 @@ class DurableContext:
         idx = self._step_counter
         self._step_counter += 1
 
-        # Use a single connection for read + optional write
+        # Hold a single connection for read + optional write (atomic checkpoint).
+        # Tradeoff: long LLM calls (~30s) tie up a pool slot. Mitigation:
+        # pool max_size=5, max 3 concurrent runs -> at most 3 connections held.
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
