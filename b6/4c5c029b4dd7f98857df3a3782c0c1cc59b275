@@ -1,0 +1,27 @@
+src/agentbox/runner/durable.py
+  s_2b9cf1c36395a7::t_6383522168d63d 29
+  s_2b9cf1c36395a7::t_5b12e4f60f7400 154-169
+  s_2b9cf1c36395a7::t_44cdab6831fac9 178-185
+src/agentbox/launcher/worker.py
+  s_2b9cf1c36395a7::t_b9b394427e401a 312-320,322-340
+  s_2b9cf1c36395a7::t_b4dd1111239c2e 24
+  s_2b9cf1c36395a7::t_c3395010deed64 361-387
+  s_2b9cf1c36395a7::t_e920a5807ba92b 301-310
+  s_2b9cf1c36395a7::t_65cd8d6b9d9536 311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b64c5c029b4dd7f98857df3a3782c0c1cc59b275",
+  "prompts": {},
+  "sessions": {
+    "s_2b9cf1c36395a7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6721-dd72-7a6f-9284-b2ef30a3af95",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
