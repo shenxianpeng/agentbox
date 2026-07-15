@@ -16,6 +16,7 @@ services:
       retries: 5
     networks:
       - agentbox-control
+      - agentbox-internal
 
   control-plane:
     build:
@@ -31,6 +32,7 @@ services:
       LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
       MODEL_NAME: ${MODEL_NAME:-deepseek-chat}
       RUNNER_IMAGE: ${RUNNER_IMAGE:-agentbox-runner:latest}
+      CREDENTIAL_PROXY_URL: http://credential-proxy:9090
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,11 +46,26 @@ services:
     tmpfs: /run
     volumes:
       - ./docker/tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro
+      - ./docker/tinyproxy-allowlist.txt:/etc/tinyproxy/tinyproxy-allowlist.txt:ro
     networks:
       - agentbox-control
       - agentbox-internal
     depends_on:
       - postgres
+
+  credential-proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.credential-proxy
+    ports:
+      - "${CREDENTIAL_PROXY_PORT:-9090}:9090"
+    environment:
+      AGENTBOX_API_TOKEN: ${AGENTBOX_API_TOKEN:-dev-token}
+      CREDENTIAL_PROXY_PORT: "${CREDENTIAL_PROXY_PORT:-9090}"
+    networks:
+      - agentbox-control
+      - agentbox-internal
+    depends_on: [] 
 
   launcher:
     build:
@@ -65,8 +82,10 @@ services:
       LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
       EGRESS_PROXY_HOST: egress-proxy
       EGRESS_PROXY_PORT: "8888"
+      CREDENTIAL_PROXY_URL: http://credential-proxy:9090
     depends_on:
       - egress-proxy
+      - credential-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

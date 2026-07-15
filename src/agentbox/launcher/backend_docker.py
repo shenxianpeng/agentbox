@@ -28,8 +28,16 @@ class DockerBackend:
         database_url: str,
         scoped_credentials: str,
         env_overrides: dict[str, str] | None = None,
+        credential_proxy_url: str = "",
     ) -> str:
         """Start a runner container for the given run.
+
+        Args:
+            run_id: The run UUID.
+            database_url: Postgres connection string for checkpoint writes.
+            scoped_credentials: JSON with per-run tokens (NOT real API keys).
+            env_overrides: Optional extra environment variables.
+            credential_proxy_url: URL of the credential proxy for LLM API calls.
 
         Returns the container ID.
         """
@@ -39,14 +47,16 @@ class DockerBackend:
 
         env = {
             "RUN_ID": run_id,
-            "DATABASE_URL": database_url,
+            "DATABASE_URL": settings.runner_database_url,
             "AGENTBOX_CREDENTIALS_JSON": scoped_credentials,
             "MODEL_NAME": settings.model_name,
             "LOGFIRE_TOKEN": settings.logfire_token,
             "PYTHONUNBUFFERED": "1",
+            "CREDENTIAL_PROXY_URL": credential_proxy_url,
             "HTTP_PROXY": proxy_url,
             "HTTPS_PROXY": proxy_url,
-            "NO_PROXY": "localhost,127.0.0.1,0.0.0.0",
+            "NO_PROXY": "localhost,127.0.0.1,0.0.0.0,postgres,credential-proxy",
+            # postgres and credential-proxy use raw TCP, not HTTP
         }
         if env_overrides:
             env.update(env_overrides)

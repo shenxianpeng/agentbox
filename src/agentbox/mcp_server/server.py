@@ -1,11 +1,14 @@
 """MCP server exposing agent run telemetry from Logfire.
 
 This MCP server provides tools for agents to query their own and other
-runs' observability data via Logfire. It queries Logfire's OpenTelemetry
-trace data (via HTTP API), NOT Postgres directly.
+runs' observability data via Logfire. It queries Logfire's SQL query API
+(https://logfire-api.pydantic.dev/v1/query), NOT Postgres directly.
 
 This mirrors Pydantic's vision:
   *"agents query Logfire (via MCP) for live telemetry"*
+
+The Logfire query API accepts SQL queries over the `records` table:
+  SELECT * FROM records WHERE attributes->>'run_id' = '...'
 
 Usage:
     uv run python -m agentbox.mcp_server.server
@@ -26,9 +29,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import urllib.request
 from typing import Any
 
+import httpx
 import mcp.server.stdio
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
@@ -38,44 +41,55 @@ logger = logging.getLogger(__name__)
 
 server = Server("agentbox-telemetry")
 
-# Logfire API configuration
-# In MVP, we read from a local OTel collector or Logfire's export API.
-# The actual Logfire API endpoint depends on the Logfire plan.
+# Logfire query API configuration
+# Docs: https://logfire.pydantic.dev/docs/reference/api/query/
 LOGFIRE_API_URL = os.environ.get(
     "LOGFIRE_API_URL",
-    "http://localhost:4318/v1/traces",  # OTLP HTTP endpoint
+    "https://logfire-api.pydantic.dev/v1/query",
 )
-LOGFIRE_TOKEN = os.environ.get("LOGFIRE_TOKEN", "")
+LOGFIRE_READ_TOKEN = os.environ.get("LOGFIRE_READ_TOKEN", "")
 
 
-def _fetch_logfire_traces(
-    query: dict[str, Any] | None = None,
-) -> list[dict[str, Any]]:
-    """Fetch trace data from Logfire's OTLP HTTP endpoint.
+async def _query_logfire(sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Query Logfire's SQL query API.
 
-    In production, this would use Logfire's SQL query API or the OTel
-    trace export endpoint. For MVP, we return simulated data when the
-    Logfire endpoint is unavailable.
+    Uses the Logfire read token (different from the write/ingest token).
+    Queries the `records` table which contains all span/trace data.
+
+    Args:
+        sql: SQL query string (e.g. "SELECT * FROM records WHERE ...")
+        params: Optional query parameters for parameterized SQL.
+
+    Returns:
+        List of result rows as dicts.
     """
-    if not LOGFIRE_TOKEN:
-        # Return empty list — Logfire not configured
+    if not LOGFIRE_READ_TOKEN:
+        logger.warning("LOGFIRE_READ_TOKEN not set — cannot query Logfire")
         return []
 
     try:
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {LOGFIRE_TOKEN}",
-        }
-        data = json.dumps(query or {}).encode()
-        req = urllib.request.Request(
-            LOGFIRE_API_URL,
-            data=data,
-            headers=headers,
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return json.loads(resp.read().decode())
-    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                LOGFIRE_API_URL,
+                json={
+                    "sql": sql,
+                    "params": params or {},
+                },
+                headers={
+                    "Authorization": f"Bearer {LOGFIRE_READ_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+            )
+            if resp.status_code == 200:
+                return resp.json().get("data", resp.json())
+            else:
+                logger.warning(
+                    "Logfire query failed: %s %s",
+                    resp.status_code,
+                    resp.text[:500],
+                )
+                return []
+    except httpx.RequestError as exc:
         logger.warning("Failed to query Logfire API: %s", exc)
         return []
 
@@ -89,7 +103,7 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="list_runs",
-            description="List agent runs with optional filters. Queries Logfire for trace data.",
+            description="List agent runs with optional filters. Queries Logfire records table.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -107,7 +121,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_run_telemetry",
-            description="Get full telemetry for a specific run from Logfire traces.",
+            description="Get full telemetry (spans, duration, replay markers) for a specific run from Logfire.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -121,7 +135,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_run_timeline",
-            description="Get a step-by-step timeline of a run from Logfire traces.",
+            description="Get a step-by-step timeline of a run from Logfire checkpoint records.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -135,17 +149,17 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="query_traces",
-            description="Run a custom Logfire trace query using OpenTelemetry attributes.",
+            description="Run a custom SQL query against Logfire's records table.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "attributes": {
-                        "type": "object",
-                        "description": "OTel attributes to filter by",
+                    "sql": {
+                        "type": "string",
+                        "description": "SQL query against the records table",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum results",
+                        "description": "Maximum results to display",
                         "default": 20,
                     },
                 },
@@ -173,41 +187,42 @@ async def handle_call_tool(name: str, arguments: dict[str, Any] | None) -> list[
 
 
 async def _list_runs(args: dict[str, Any]) -> list[types.TextContent]:
-    """List runs from Logfire traces."""
-    status = args.get("status")
+    """List runs from Logfire records."""
+    status_filter = args.get("status", "")
     limit = min(args.get("limit", 10), 100)
 
-    # Query Logfire for run traces
-    query = {
-        "attributes": {},
-        "limit": limit,
-    }
-    if status:
-        query["attributes"]["run.status"] = status
+    conditions = ["attributes ? 'run_id'"]
+    if status_filter:
+        conditions.append(f"attributes->>'run_status' = '{status_filter}'")
 
-    traces = _fetch_logfire_traces(query)
+    sql = f"""
+        SELECT
+            attributes->>'run_id' as run_id,
+            attributes->>'run_status' as status,
+            attributes->>'agent_name' as agent_name,
+            timestamp
+        FROM records
+        WHERE {' AND '.join(conditions)}
+        ORDER BY timestamp DESC
+        LIMIT {limit}
+    """
 
-    if not traces:
-        # Fallback: return informative message
+    rows = await _query_logfire(sql)
+
+    if not rows:
         return [
             types.TextContent(
                 type="text",
-                text=(
-                    "No Logfire trace data available. "
-                    "To enable Logfire telemetry queries, set LOGFIRE_TOKEN "
-                    "and ensure the Logfire OTLP endpoint is accessible.\n\n"
-                    "The MCP server is functioning correctly — it queries Logfire "
-                    "(not Postgres) as per the Pydantic design."
-                ),
+                text=f"No Logfire trace data available. Set LOGFIRE_READ_TOKEN to enable telemetry queries.",
             )
         ]
 
-    # Format trace data as readable text
     lines = ["## Recent Runs from Logfire\n"]
-    for trace in traces[:limit]:
-        run_id = trace.get("attributes", {}).get("run.id", "unknown")
-        status_val = trace.get("attributes", {}).get("run.status", "unknown")
-        lines.append(f"- **{run_id}** — status: {status_val}")
+    for row in rows:
+        rid = row.get("run_id", "unknown")
+        st = row.get("status", "unknown")
+        ts = row.get("timestamp", "")
+        lines.append(f"- **{rid}** — status: {st} ({ts})")
 
     return [types.TextContent(type="text", text="\n".join(lines))]
 
@@ -215,40 +230,43 @@ async def _list_runs(args: dict[str, Any]) -> list[types.TextContent]:
 async def _get_run_telemetry(args: dict[str, Any]) -> list[types.TextContent]:
     """Get full telemetry for a run from Logfire."""
     run_id = args.get("run_id", "")
+    if not run_id:
+        return [types.TextContent(type="text", text="Error: run_id is required")]
 
-    query = {
-        "attributes": {"run.id": run_id},
-        "limit": 100,
-    }
-    traces = _fetch_logfire_traces(query)
+    sql = f"""
+        SELECT
+            span_name,
+            attributes,
+            start_timestamp,
+            end_timestamp,
+            duration_ms
+        FROM records
+        WHERE attributes->>'run_id' = '{run_id}'
+        ORDER BY start_timestamp ASC
+        LIMIT 100
+    """
 
-    if not traces:
+    rows = await _query_logfire(sql)
+
+    if not rows:
         return [
             types.TextContent(
                 type="text",
-                text=(
-                    f"## Run Telemetry: {run_id}\n\n"
-                    f"No Logfire trace data found for run `{run_id}`.\n\n"
-                    f"This could mean:\n"
-                    f"1. The run hasn't been traced yet\n"
-                    f"2. Logfire is not configured (set LOGFIRE_TOKEN)\n"
-                    f"3. The trace hasn't been exported yet\n\n"
-                    f"**Note**: This data comes from Logfire, not Postgres, "
-                    f"following the design pattern of agents querying "
-                    f"Logfire (via MCP) for live telemetry."
-                ),
+                text=f"No Logfire trace data found for run `{run_id}`. Set LOGFIRE_READ_TOKEN and ensure the run was traced.",
             )
         ]
 
-    # Build telemetry report from traces
     lines = [f"## Run Telemetry: {run_id}\n"]
-    for i, trace in enumerate(traces[:20]):
-        attrs = trace.get("attributes", {})
-        span_name = trace.get("name", f"span-{i}")
-        duration = trace.get("duration", 0)
-        lines.append(f"### Span: {span_name}")
+    for i, row in enumerate(rows):
+        span_name = row.get("span_name", f"span-{i}")
+        duration = row.get("duration_ms", "?")
+        attrs = row.get("attributes", {})
+        replayed = attrs.get("replayed", False)
+
+        replay_marker = " 🔄 REPLAYED" if replayed else ""
+        lines.append(f"### Span: {span_name}{replay_marker}")
         lines.append(f"- Duration: {duration}ms")
-        lines.append(f"- Attributes: {json.dumps(attrs, indent=2)}")
+        lines.append(f"- Attributes: {json.dumps(attrs, default=str)[:200]}")
         lines.append("")
 
     return [types.TextContent(type="text", text="\n".join(lines))]
@@ -257,56 +275,70 @@ async def _get_run_telemetry(args: dict[str, Any]) -> list[types.TextContent]:
 async def _get_run_timeline(args: dict[str, Any]) -> list[types.TextContent]:
     """Get timeline of a run from Logfire."""
     run_id = args.get("run_id", "")
-    query = {
-        "attributes": {"run.id": run_id},
-        "limit": 200,
-    }
-    traces = _fetch_logfire_traces(query)
+    if not run_id:
+        return [types.TextContent(type="text", text="Error: run_id is required")]
 
-    if not traces:
+    sql = f"""
+        SELECT
+            span_name,
+            attributes,
+            start_timestamp,
+            duration_ms
+        FROM records
+        WHERE attributes->>'run_id' = '{run_id}'
+          AND attributes->>'step_index' IS NOT NULL
+        ORDER BY (attributes->>'step_index')::int ASC
+        LIMIT 200
+    """
+
+    rows = await _query_logfire(sql)
+
+    if not rows:
         return [
             types.TextContent(
                 type="text",
-                text=(
-                    f"## Run Timeline: {run_id}\n\n"
-                    f"No timeline data available from Logfire.\n\n"
-                    f"The MCP server is correctly querying Logfire for telemetry "
-                    f"rather than reading Postgres directly."
-                ),
+                text=f"No timeline data available for run `{run_id}`. ",
             )
         ]
 
     lines = [f"## Timeline: {run_id}\n"]
-    for i, trace in enumerate(traces):
-        lines.append(f"{i + 1}. **{trace.get('name', 'step')}** — {trace.get('duration', 0)}ms")
+    for row in rows:
+        span_name = row.get("span_name", "step")
+        duration = row.get("duration_ms", "?")
+        attrs = row.get("attributes", {})
+        step_idx = attrs.get("step_index", "?")
+        replayed = attrs.get("replayed", False)
+        replay_flag = " [replayed]" if replayed else ""
+        lines.append(f"{step_idx}. **{span_name}** — {duration}ms{replay_flag}")
 
     return [types.TextContent(type="text", text="\n".join(lines))]
 
 
 async def _query_traces(args: dict[str, Any]) -> list[types.TextContent]:
-    """Run a custom Logfire trace query."""
-    attributes = args.get("attributes", {})
+    """Run a custom SQL query against Logfire."""
+    sql = args.get("sql", "")
     limit = min(args.get("limit", 20), 100)
 
-    query = {"attributes": attributes, "limit": limit}
-    traces = _fetch_logfire_traces(query)
+    if not sql:
+        return [types.TextContent(type="text", text="Error: SQL query is required")]
 
-    if not traces:
+    # Append limit if not present
+    if "LIMIT" not in sql.upper():
+        sql = f"{sql} LIMIT {limit}"
+
+    rows = await _query_logfire(sql)
+
+    if not rows:
         return [
             types.TextContent(
                 type="text",
-                text=(
-                    f"No traces found matching attributes: "
-                    f"{json.dumps(attributes)}\n\n"
-                    f"To connect to Logfire, set LOGFIRE_TOKEN and "
-                    f"LOGFIRE_API_URL."
-                ),
+                text=f"No results for query: {sql[:200]}",
             )
         ]
 
-    lines = [f"## Trace Results ({len(traces)} found)\n"]
-    for trace in traces[:limit]:
-        lines.append(f"- {trace.get('name', 'span')} — {json.dumps(trace.get('attributes', {}))}")
+    lines = [f"## Trace Results ({len(rows)} rows)\n"]
+    for row in rows[:limit]:
+        lines.append(f"- {json.dumps(row, default=str)[:300]}")
 
     return [types.TextContent(type="text", text="\n".join(lines))]
 
@@ -318,7 +350,10 @@ async def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    logger.info("Starting AgentBox MCP server (Logfire telemetry backend)")
+    if LOGFIRE_READ_TOKEN:
+        logger.info("Logfire query API configured at %s", LOGFIRE_API_URL)
+    else:
+        logger.warning("LOGFIRE_READ_TOKEN not set — MCP tools will return empty results")
 
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(

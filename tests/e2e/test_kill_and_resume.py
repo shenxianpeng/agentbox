@@ -187,30 +187,34 @@ async def test_kill_and_resume():
         # ── Assertions ─────────────────────────────────────────
 
         # 1. Run succeeded
-        assert final_status == "succeeded"
+        assert final_status == "succeeded", f"Expected succeeded, got {final_status}"
 
-        # 2. attempt should be 1 or 2 (killed mid-run, requeued, restarted)
-        #    Could be 1 if launcher decrements, or 2 if it increments
+        # 2. Run was attempted (killed mid-execution, requeued, restarted)
+        #    Launcher increments attempt on each claim: first claim→1, requeue, second claim→2
         assert final_attempt is not None, "attempt should be set"
+        logger.info("Run attempt: %d", final_attempt)
 
-        # 3. Total model calls should equal model calls before kill
-        #    (the replay should fast-forward through completed steps)
-        #    Actually, model_calls_after might include the same step_indices
-        #    as model_calls_before if checkpoints were re-checked.
-        #    The key assertion: total model calls should NOT exceed
-        #    model_calls_before + some small number for the resumed partial step.
-        #    In a perfect replay, model_calls_after == 0, but in practice
-        #    the last in-flight call might be retried.
-        logger.info(
-            "Model calls: %d before kill, %d after kill (total: %d)",
-            model_calls_before,
-            model_calls_after,
-            total_model_calls,
+        # 3. Core assertion: no model calls were made after the kill
+        #    All completed checkpoints are replayed, so model_calls_after_kill == 0
+        #    The only exception: the in-flight model call at the exact moment of kill
+        #    may not have been checkpointed; if so it would appear as 1 new model call.
+        assert model_calls_after <= 1, (
+            f"Expected at most 1 model call after kill (for in-flight retry), "
+            f"got {model_calls_after}. This means {model_calls_after} model call(s) "
+            f"were re-executed during replay, which should never happen."
         )
 
-        # 4. Success result should contain meaningful output
+        # 4. The total number of model call checkpoints should not exceed
+        #    the pre-kill count by more than 1 (for the in-flight call)
+        assert total_model_calls <= model_calls_before + 1, (
+            f"Total model calls ({total_model_calls}) exceeds pre-kill count "
+            f"({model_calls_before}) + 1 (in-flight retry). "
+            f"Checkpoints are not being replayed correctly."
+        )
+
+        # 5. Success result should contain meaningful output
         assert final_result is not None, "Run should have output"
-        logger.info("Run result: %s", json.dumps(final_result, indent=2)[:500])
+        logger.info("Run result (first 500 chars): %s", json.dumps(final_result, indent=2)[:500])
 
         # Cleanup
         await pool.close()

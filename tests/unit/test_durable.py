@@ -90,7 +90,7 @@ class FakeModel(Model):
     ) -> ModelResponse:
         return await self.request(messages, None, ModelRequestParameters())
 
-    def count_tokens(
+    async def count_tokens(
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,

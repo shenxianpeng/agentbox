@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────
     database_url: str = "postgresql://agentbox:agentbox@localhost:5432/agentbox"
+    # Restricted URL for the runner (uses agentbox_runner role with RLS)
+    runner_database_url: str = "postgresql://agentbox_runner:agentbox_runner_dev@localhost:5432/agentbox"
 
     # ── API ───────────────────────────────────────────────────
     agentbox_api_token: str = "dev-token"
@@ -35,9 +37,12 @@ class Settings(BaseSettings):
     default_tenant_max_concurrent: int = 5
     warm_pool_size: int = 0  # Phase 2
 
+    # ── Credential proxy ─────────────────────────────────────
+    credential_proxy_url: str = "http://credential-proxy:9090"
+
     # ── Cost tracking (Phase 2) ───────────────────────────────
-    cost_per_1k_input_tokens: float = 0.15  # USD, default for deepseek
-    cost_per_1k_output_tokens: float = 0.60  # USD
+    cost_per_1k_input_tokens: float = 0.00027  # USD, default for deepseek-chat
+    cost_per_1k_output_tokens: float = 0.00110  # USD
     compute_cost_per_second: float = 0.0000167  # ~$0.06/hr
 
 

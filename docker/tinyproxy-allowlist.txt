@@ -1,0 +1,22 @@
+# AgentBox egress allowlist
+# Only domains listed here can be reached from sandbox containers.
+# One domain per line. Wildcards are supported (e.g. *.anthropic.com).
+#
+# LLM API endpoints
+api.deepseek.com
+*.deepseek.com
+api.anthropic.com
+*.anthropic.com
+api.openai.com
+*.openai.com
+
+# Observability (Logfire/OTel)
+api.logfire.dev
+*.logfire.dev
+
+# Package repos (for sandbox tool use, if needed)
+pypi.org
+*.pypi.org
+files.pythonhosted.org
+github.com
+*.github.com

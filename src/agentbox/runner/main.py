@@ -21,7 +21,12 @@ import asyncpg
 import logfire
 
 from agentbox.db.queries import create_pool
-from agentbox.runner.agents import create_incident_investigator
+from agentbox.runner.agents import (
+    analyze_logs,
+    fetch_metrics,
+    fetch_url,
+    open_github_issue,
+)
 from agentbox.runner.credentials import get_llm_api_key, load_credentials
 from agentbox.runner.durable import DurableContext
 from agentbox.runner.durable_model import DurableModel
@@ -135,28 +140,39 @@ def _setup_logging(run_id: str) -> None:
 def _build_model(creds: dict) -> tuple:
     """Build the LLM model based on available credentials.
 
+    Uses the credential proxy for LLM API calls. The runner only has a
+    per-run token (NOT the real API key). The credential proxy replaces
+    the token with the real key before forwarding to the LLM API.
+
+    Flow:
+      1. Runner sends request to credential-proxy:9090 with Bearer <per-run-token>
+      2. Credential proxy looks up the real key, replaces the header
+      3. Proxy forwards to the real LLM API (DeepSeek, Anthropic, etc.)
+
     Returns (inner_model, model_name) tuple.
     Raises RuntimeError if no API key is available.
     """
-    from pydantic_ai.models.anthropic import AnthropicModel
-    from pydantic_ai.models.openai import OpenAIModel
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.openai import OpenAIProvider
 
     api_key = get_llm_api_key(creds, settings.model_name)
 
     if api_key:
-        return OpenAIModel(
-            settings.model_name,
+        # Use the credential proxy as the base URL.
+        # The per-run token is sent as the API key; the credential proxy
+        # replaces it with the real key before forwarding to the LLM API.
+        credential_proxy_url = os.environ.get(
+            "CREDENTIAL_PROXY_URL",
+            "http://credential-proxy:9090",
+        )
+        provider = OpenAIProvider(
             api_key=api_key,
-            base_url=(
-                "https://api.deepseek.com/v1" if "deepseek" in settings.model_name else None
-            ),
+            base_url=credential_proxy_url,
+        )
+        return OpenAIChatModel(
+            settings.model_name,
+            provider=provider,
         ), settings.model_name
-
-    if settings.anthropic_api_key:
-        return AnthropicModel(
-            "claude-sonnet-4-20250514",
-            api_key=settings.anthropic_api_key,
-        ), "claude-sonnet-4-20250514"
 
     raise RuntimeError(f"No API key available for model {settings.model_name}")
 
@@ -181,6 +197,15 @@ async def _set_run_status(pool: asyncpg.Pool, run_id: str, status: str) -> None:
         )
 
 
+async def _release_lease(pool: asyncpg.Pool, run_id: str) -> None:
+    """Delete the lease for this run, so the reaper doesn't requeue it."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM leases WHERE run_id = $1::uuid",
+            run_id,
+        )
+
+
 # ── Main entrypoint ──────────────────────────────────────────────────────────
 
 
@@ -194,7 +219,16 @@ async def main() -> int:
     _setup_logging(run_id)
     logger.info("Runner starting for run %s", run_id)
 
-    pool = await create_pool(settings.database_url)
+    # Use the restricted runner role + set app.run_id for Row-Level Security
+    async def _init_conn(conn: asyncpg.Connection) -> None:
+        await conn.execute("SET app.run_id = $1::text", run_id)
+
+    pool = await asyncpg.create_pool(
+        settings.runner_database_url,
+        min_size=1,
+        max_size=5,
+        init=_init_conn,
+    )
 
     try:
         # Claim lease and start heartbeat
@@ -219,7 +253,27 @@ async def main() -> int:
         inner, _ = _build_model(creds)
         durable_context = DurableContext(run_id, pool)
         durable = DurableModel(inner, durable_context)
-        agent = create_incident_investigator(durable)
+        # Wrap tools with durable_tool so every tool call is checkpointed
+        from agentbox.runner.durable_tool import durable_tool
+
+        # Build agent from registry using agent_name
+        from agentbox.runner.agents import create_incident_investigator
+
+        _AGENT_REGISTRY = {
+            "incident-investigator": lambda model, tools: create_incident_investigator(model, tools=tools),
+        }
+
+        durable_tools = [
+            durable_tool(durable_context)(analyze_logs),
+            durable_tool(durable_context)(fetch_metrics),
+            durable_tool(durable_context)(open_github_issue),
+            durable_tool(durable_context)(fetch_url),
+        ]
+        agent_factory = _AGENT_REGISTRY.get(
+            agent_name,
+            lambda model, tools: create_incident_investigator(model, tools=tools),
+        )
+        agent = agent_factory(durable, durable_tools)
 
         # Execute the agent
         logfire_span = logfire.span(
@@ -241,12 +295,13 @@ async def main() -> int:
 
         logger.info("Run %s completed successfully (cost: $%.6f)", run_id, total_cost)
 
-        # Cleanup
+        # Cleanup: stop heartbeat and delete lease so reaper doesn't requeue
         heartbeat_task.cancel()
         try:
             await heartbeat_task
         except asyncio.CancelledError:
             pass
+        await _release_lease(pool, run_id)
 
         return 0
 
@@ -254,6 +309,8 @@ async def main() -> int:
         logger.exception("Runner failed for run %s", run_id)
         error_msg = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
         await update_run_result(pool, run_id, "failed", error=error_msg)
+        # Delete lease so reaper doesn't try to requeue a failed run
+        await _release_lease(pool, run_id)
         return 1
 
     finally:

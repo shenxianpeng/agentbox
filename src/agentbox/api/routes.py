@@ -105,6 +105,31 @@ class CostResponse(BaseModel):
 # ── Routes ──────────────────────────────────────────────────
 
 
+@router.get("/healthz")
+async def healthz():
+    """Health check endpoint for Docker/K8s probes."""
+    return {"status": "ok"}
+
+
+@router.get("/runs", response_model=list[RunResponse])
+async def list_runs(pool: PoolDep, limit: int = 20, offset: int = 0):
+    """List all runs with pagination."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, status, tenant_id, agent_name, prompt, egress_allow,
+                   attempt, max_attempts, created_at, started_at, finished_at,
+                   result, error, cost_estimate
+            FROM runs
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            """,
+            limit,
+            offset,
+        )
+    return [_run_to_response(dict(r)) for r in rows]
+
+
 @router.post("/runs", response_model=RunResponse, status_code=status.HTTP_201_CREATED)
 async def create_run(
     body: CreateRunRequest,
@@ -127,11 +152,12 @@ async def create_run(
     )
 
     # Mint scoped credentials for this run
+    # Scope is based on model_name so the runner can find the right key
     creds = await store_scoped_credentials(
         pool,
         str(run["id"]),
         api_key,
-        body.agent_name,
+        settings.model_name,
     )
 
     return _run_to_response(run, creds)

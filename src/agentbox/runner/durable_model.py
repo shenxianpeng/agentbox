@@ -157,13 +157,49 @@ class DurableModel(Model):
     ) -> ModelResponse:
         fingerprint = _messages_fingerprint(messages)
 
+        # Estimate input tokens before making the request (best-effort)
+        # Some models (e.g. TestModel) don't support count_tokens, so we handle it gracefully
+        input_tokens = 0
+        try:
+            input_usage = await self._inner.count_tokens(
+                messages, model_settings, model_request_parameters
+            )
+            input_tokens = input_usage.input_tokens or 0
+        except NotImplementedError:
+            pass
+
         async def _do_request() -> ModelResponse:
             return await self._inner.request(messages, model_settings, model_request_parameters)
 
+        # We capture output_tokens after the request by wrapping _do_request
+        output_tokens = 0
+
+        async def _do_request_with_tracking() -> ModelResponse:
+            nonlocal output_tokens
+            resp = await self._inner.request(messages, model_settings, model_request_parameters)
+            # Estimate output tokens from response content
+            text_length = 0
+            for part in resp.parts:
+                from pydantic_ai.messages import TextPart
+
+                if isinstance(part, TextPart):
+                    text_length += len(part.content)
+                elif hasattr(part, "content"):
+                    text_length += len(str(part.content))
+            # Rough estimate: ~4 chars per token for English text
+            output_tokens = max(1, text_length // 4)
+            return resp
+
+        # Compute estimated cost
+        cost = _estimate_cost(self.model_name, input_tokens, output_tokens)
+        total_tokens = input_tokens + output_tokens
+
         result = await self._context.step(
             kind="model_call",
-            fn=_do_request,
+            fn=_do_request_with_tracking,
             fingerprint=fingerprint,
+            token_count=total_tokens,
+            cost=cost,
         )
 
         # On replay, checkpoint stores a dataclass-asdict dict.
@@ -199,13 +235,13 @@ class DurableModel(Model):
         """Compact messages — pass through to inner model."""
         return await self._inner.compact_messages(messages, instructions=instructions)
 
-    def count_tokens(
+    async def count_tokens(
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> Usage:
-        return self._inner.count_tokens(messages, model_settings, model_request_parameters)
+        return await self._inner.count_tokens(messages, model_settings, model_request_parameters)
 
     def customize_request_parameters(
         self,

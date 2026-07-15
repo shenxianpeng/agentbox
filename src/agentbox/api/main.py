@@ -11,7 +11,6 @@ from contextlib import asynccontextmanager
 
 import logfire
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from agentbox.db.queries import create_pool
 from agentbox.settings import settings
@@ -52,13 +51,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is not needed for a control-plane API accessed by the launcher and CLI.
+# If needed in the future, restrict to specific origins.
+# app.add_middleware(CORSMiddleware, ...)
 
 # Register routes
 from agentbox.api.routes import router  # noqa: E402

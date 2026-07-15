@@ -122,6 +122,10 @@ async def open_github_issue(
     actually calling the GitHub API. In production it would use a scoped
     GitHub token.
 
+    Uses a stable content-based hash (SHA-256) instead of Python's
+    built-in hash() which is randomized per process and would break
+    deterministic replay.
+
     Args:
         title: The issue title.
         description: A detailed description of the issue.
@@ -137,12 +141,15 @@ async def open_github_issue(
     )
     await asyncio.sleep(1)
 
-    issue_id = hash(title + description) % 10000
+    # Use stable hash for deterministic replay across processes
+    import hashlib
+
+    stable_id = int(hashlib.sha256(f"{title}:{description}".encode()).hexdigest()[:8], 16) % 10000
     return (
         f"Issue created successfully!\n"
         f"- **Title**: {title}\n"
         f"- **Severity**: {severity}\n"
-        f"- **URL**: https://github.com/agentbox/demo/issues/{issue_id}\n"
+        f"- **URL**: https://github.com/agentbox/demo/issues/{stable_id}\n"
         f"- **Status**: open\n"
     )
 

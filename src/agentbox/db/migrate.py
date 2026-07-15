@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from pathlib import Path
 
 import asyncpg
@@ -32,18 +31,17 @@ async def get_applied_migrations(pool: asyncpg.Pool) -> set[str]:
 
 
 async def apply_migration(pool: asyncpg.Pool, path: Path) -> None:
-    """Apply a single migration file within a transaction."""
+    """Apply a single migration file within a transaction.
+
+    Uses asyncpg's built-in multi-statement execution instead of
+    regex splitting, which would break on function bodies or strings
+    containing semicolons.
+    """
     sql = path.read_text()
     version = path.name
     async with pool.acquire() as conn:
         async with conn.transaction():
-            # Execute all statements in the file
-            # Split on semicolon-newline to handle multi-statement files
-            statements = re.split(r";\s*\n", sql)
-            for stmt in statements:
-                stmt = stmt.strip()
-                if stmt:
-                    await conn.execute(stmt)
+            await conn.execute(sql)
             await conn.execute("INSERT INTO schema_migrations (version) VALUES ($1)", version)
     print(f"  ✓ Applied {version}")
 
