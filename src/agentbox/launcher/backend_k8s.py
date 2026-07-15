@@ -10,10 +10,6 @@ from agentbox.settings import settings
 
 logger = logging.getLogger(__name__)
 
-JOB_TEMPLATE_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "k8s", "job-template.yaml"
-)
-
 NAMESPACE = "agentbox"
 PROXY_HOST = os.environ.get("EGRESS_PROXY_HOST", "egress-proxy")
 PROXY_PORT = os.environ.get("EGRESS_PROXY_PORT", "8888")
@@ -46,16 +42,24 @@ class K8sBackend:
         database_url: str,
         scoped_credentials: str,
         env_overrides: dict[str, str] | None = None,
+        credential_proxy_url: str = "",
     ) -> str:
         """Start a runner Job for the given run.
 
-        Creates a temporary Secret with scoped credentials, then creates the Job.
+        Creates temporary Secrets for:
+          - Scoped credentials (creds-<RUN_ID>)
+          - Database URL, Logfire token, credential proxy URL (db-creds-<RUN_ID>)
+        Then creates the Job. All Secrets are cleaned up on kill or completion.
         Returns the Job name.
         """
         import kubernetes as k8s
 
-        # ── Create temporary Secret with scoped credentials ──
-        secret_name = f"creds-{run_id[:20]}"
+        short_id = run_id[:20]
+        secret_name = f"creds-{short_id}"
+        db_secret_name = f"db-creds-{short_id}"
+        job_name = f"run-{short_id}"
+
+        # ── Create Secret with scoped credentials (per-run token) ──
         secret = k8s.client.V1Secret(
             metadata=k8s.client.V1ObjectMeta(
                 name=secret_name,
@@ -73,10 +77,30 @@ class K8sBackend:
             else:
                 raise
 
-        # ── Build the Job from template ──
-        job_name = f"run-{run_id[:20]}"
+        # ── Create Secret with DB credentials (not in plain env) ──
+        db_secret = k8s.client.V1Secret(
+            metadata=k8s.client.V1ObjectMeta(
+                name=db_secret_name,
+                namespace=NAMESPACE,
+                labels={"agentbox.run_id": run_id},
+            ),
+            string_data={
+                "database_url": database_url,
+                "logfire_token": settings.logfire_token or "",
+                "credential_proxy_url": credential_proxy_url or settings.credential_proxy_url,
+            },
+        )
+        try:
+            self._core.create_namespaced_secret(NAMESPACE, db_secret)
+            logger.info("Created Secret %s for run %s", db_secret_name, run_id)
+        except k8s.client.ApiException as exc:
+            if exc.status == 409:
+                logger.warning("Secret %s already exists, reusing", db_secret_name)
+            else:
+                self._delete_secret(secret_name)
+                raise
 
-        # Read and fill template
+        # ── Build the Job from template ──
         template_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "..", "k8s", "job-template.yaml"
         )
@@ -85,17 +109,18 @@ class K8sBackend:
 
         replacements = {
             "<RUN_ID>": run_id,
-            "<DATABASE_URL>": database_url,
             "<MODEL_NAME>": settings.model_name,
-            "<LOGFIRE_TOKEN>": settings.logfire_token or "",
             "<RUNNER_IMAGE>": settings.runner_image,
             "<PROXY_URL>": PROXY_URL,
-            "<SECRET_NAME>": secret_name,
+            "<RUNTIME_CLASS>": (
+                f"      runtimeClassName: {settings.runtime_class}"
+                if settings.runtime_class
+                else ""
+            ),
         }
         for key, value in replacements.items():
             template = template.replace(key, value)
 
-        # Parse the YAML template into a Job object
         import yaml
 
         job_manifest = yaml.safe_load(template)
@@ -108,21 +133,21 @@ class K8sBackend:
             if exc.status == 409:
                 logger.warning("Job %s already exists", job_name)
             else:
-                # Clean up the secret
                 self._delete_secret(secret_name)
+                self._delete_secret(db_secret_name)
                 raise
 
         return job_name
 
     def kill_run(self, run_id: str) -> bool:
-        """Delete the Job and Secret for the given run.
+        """Delete the Job and Secrets for the given run.
 
         Returns True if a Job was found and deleted, False otherwise.
         """
         import kubernetes as k8s
 
-        job_name = f"run-{run_id[:20]}"
-        secret_name = f"creds-{run_id[:20]}"
+        short_id = run_id[:20]
+        job_name = f"run-{short_id}"
 
         found = False
 
@@ -139,8 +164,9 @@ class K8sBackend:
             if exc.status != 404:
                 logger.warning("Failed to delete Job %s: %s", job_name, exc)
 
-        # Clean up the Secret
-        self._delete_secret(secret_name)
+        # Clean up all Secrets for this run
+        self._delete_secret(f"creds-{short_id}")
+        self._delete_secret(f"db-creds-{short_id}")
 
         return found
 
