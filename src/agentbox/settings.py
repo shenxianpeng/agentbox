@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     agentbox_backend: str = "docker"  # "docker" | "k8s"
     max_concurrent_runs: int = 3
     default_tenant_max_concurrent: int = 5
-    warm_pool_size: int = 0  # Phase 2
+    # warm_pool_size: removed — the warm pool design was unworkable (can't inject RUN_ID
+    # into a running container). A viable approach: warm containers poll DB and self-assign.
+    # See docs/architecture.md for the proposed redesign.
 
     # ── Credential proxy ─────────────────────────────────────
     credential_proxy_url: str = "http://credential-proxy:9090"
