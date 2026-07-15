@@ -1,0 +1,52 @@
+src/agentbox/cost/tracker.py
+  s_2b9cf1c36395a7::t_cad3c9b73e37bf 5
+src/agentbox/runner/agents.py
+  s_2b9cf1c36395a7::t_19fe7ce7a30398 4-5
+src/agentbox/runner/main.py
+  s_2b9cf1c36395a7::t_e1ee01af591fb1 258
+  s_2b9cf1c36395a7::t_cad3c9b73e37bf 260,270
+  s_2b9cf1c36395a7::t_cfd50cfb92494b 261
+src/agentbox/settings.py
+  s_2b9cf1c36395a7::t_ee0ef5af5dfe0e 18-20
+.github/workflows/ci.yml
+  s_2b9cf1c36395a7::t_d0d50ab02a90dd 43
+  s_2b9cf1c36395a7::t_7466f3e2e5a581 9-12,39-42
+  s_2b9cf1c36395a7::t_25723b9d3d56c2 44
+src/agentbox/runner/durable_model.py
+  s_2b9cf1c36395a7::t_ee0ef5af5dfe0e 141-149
+  s_2b9cf1c36395a7::t_cad3c9b73e37bf 104,117
+tests/unit/test_kill_and_resume.py
+  s_2b9cf1c36395a7::t_19fe7ce7a30398 298,300
+docs/REVIEW.md
+  s_2b9cf1c36395a7::t_e827b98d5bbfcc 1-348
+src/agentbox/mcp_server/server.py
+  s_2b9cf1c36395a7::t_ee0ef5af5dfe0e 205
+  s_2b9cf1c36395a7::t_ed5598477d4800 216
+  s_2b9cf1c36395a7::t_19fe7ce7a30398 124,255
+pyproject.toml
+  s_2b9cf1c36395a7::t_dc9428a9dcee7c 67-75,77-83
+  s_2b9cf1c36395a7::t_e575acd6762afd 48
+  s_2b9cf1c36395a7::t_4b50735610526d 84,89
+  s_2b9cf1c36395a7::t_4f72331e6516eb 85-88
+  s_2b9cf1c36395a7::t_254c0d8ec02924 90
+  s_2b9cf1c36395a7::t_a0877a2260a4ba 76
+src/agentbox/launcher/worker.py
+  s_2b9cf1c36395a7::t_cad3c9b73e37bf 317,334
+  s_2b9cf1c36395a7::t_19fe7ce7a30398 186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0176c53226666e5e5234a0d4e496bb59ce072cb3",
+  "prompts": {},
+  "sessions": {
+    "s_2b9cf1c36395a7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6721-dd72-7a6f-9284-b2ef30a3af95",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
