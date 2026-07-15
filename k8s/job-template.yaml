@@ -2,7 +2,12 @@
 # The launcher creates Jobs from this template, injecting:
 #   - RUN_ID as env var
 #   - Scoped credentials via a temporary Secret (not as plain env vars)
+#   - Database credentials via a temporary Secret (not as plain env vars)
+#   - Logfire token via a temporary Secret
 #   - Resource limits
+#
+# All Secrets are created by the launcher before the Job and deleted
+# after the Job completes (or when the run is reaped).
 #
 # backoffLimit=0 because AgentBox handles retries via the Postgres checkpoint layer.
 apiVersion: batch/v1
@@ -20,19 +25,31 @@ spec:
       labels:
         agentbox.run_id: "<RUN_ID>"
     spec:
-      # Optional: runtimeClassName: gvisor  # Step 2.4
+      serviceAccountName: agentbox-launcher
+      # runtimeClassName: <RUNTIME_CLASS>  # Set via AGENTBOX_RUNTIME_CLASS env
       containers:
         - name: runner
           image: <RUNNER_IMAGE>
           env:
             - name: RUN_ID
               value: "<RUN_ID>"
-            - name: DATABASE_URL
-              value: "<DATABASE_URL>"
             - name: MODEL_NAME
               value: "<MODEL_NAME>"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds-<RUN_ID>
+                  key: database_url
             - name: LOGFIRE_TOKEN
-              value: "<LOGFIRE_TOKEN>"
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds-<RUN_ID>
+                  key: logfire_token
+            - name: CREDENTIAL_PROXY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds-<RUN_ID>
+                  key: credential_proxy_url
             - name: AGENTBOX_CREDENTIALS_JSON
               valueFrom:
                 secretKeyRef:
@@ -43,7 +60,7 @@ spec:
             - name: HTTPS_PROXY
               value: "<PROXY_URL>"
             - name: NO_PROXY
-              value: "localhost,127.0.0.1"
+              value: "localhost,127.0.0.1,postgres,credential-proxy"
           resources:
             requests:
               cpu: "500m"
@@ -57,5 +74,5 @@ spec:
             capabilities:
               drop: ["ALL"]
       restartPolicy: Never
-  # Note: the Secret creds-<RUN_ID> must be created before the Job
-  # and deleted after the Job completes (handled by the launcher).
+  # Note: Secrets db-creds-<RUN_ID> and creds-<RUN_ID> must be created
+  # before the Job and deleted after the Job completes (handled by the launcher).

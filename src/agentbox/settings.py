@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     agentbox_backend: str = "docker"  # "docker" | "k8s"
     max_concurrent_runs: int = 3
     default_tenant_max_concurrent: int = 5
+    runtime_class: str = ""  # e.g. "gvisor" — set AGENTBOX_RUNTIME_CLASS env
     # warm_pool_size: removed — the warm pool design was unworkable (can't inject RUN_ID
     # into a running container). A viable approach: warm containers poll DB and self-assign.
     # See docs/architecture.md for the proposed redesign.
