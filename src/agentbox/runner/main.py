@@ -133,7 +133,9 @@ def _setup_logging(run_id: str) -> None:
             token=settings.logfire_token,
             service_name="agentbox-runner",
         )
-        logfire.info("Runner starting", extra={"run_id": run_id})
+        logfire.instrument_asyncpg()
+        logfire.instrument_httpx()
+        logfire.info("Runner starting", run_id=run_id)
 
 
 def _build_model(creds: dict) -> tuple:

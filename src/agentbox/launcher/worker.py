@@ -399,6 +399,14 @@ async def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    if settings.logfire_token:
+        logfire.configure(
+            token=settings.logfire_token,
+            service_name="agentbox-launcher",
+        )
+        logfire.instrument_asyncpg()
+        logfire.instrument_httpx()
+
     logger.info("Initializing launcher (backend=%s)...", settings.agentbox_backend)
 
     pool = await create_pool(settings.database_url)

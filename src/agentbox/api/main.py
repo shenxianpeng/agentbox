@@ -29,7 +29,9 @@ async def lifespan(app: FastAPI):
             service_name="agentbox-control-plane",
         )
         logfire.instrument_fastapi(app)
-        logger.info("Logfire enabled")
+        logfire.instrument_asyncpg()
+        logfire.instrument_httpx()
+        logger.info("Logfire enabled (FastAPI + asyncpg + httpx)")
     else:
         logger.info("Logfire disabled (no token)")
 
