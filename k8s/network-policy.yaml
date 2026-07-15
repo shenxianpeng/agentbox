@@ -7,8 +7,9 @@ metadata:
   namespace: agentbox
 spec:
   podSelector:
-    matchLabels:
-      agentbox.run_id: "*"
+    matchExpressions:
+      - key: agentbox.run_id
+        operator: Exists
   policyTypes:
     - Egress
   egress:
