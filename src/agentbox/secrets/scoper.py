@@ -27,7 +27,6 @@ import asyncpg
 
 from agentbox.db.queries import insert_scoped_credential
 
-
 DEFAULT_TTL_SECONDS = 600  # 10 minutes — enough for max_attempts * 120s
 
 

@@ -121,7 +121,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="get_run_telemetry",
-            description="Get full telemetry (spans, duration, replay markers) for a specific run from Logfire.",
+            description="Get full telemetry (spans, duration, markers) for a run from Logfire.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -202,7 +202,7 @@ async def _list_runs(args: dict[str, Any]) -> list[types.TextContent]:
             attributes->>'agent_name' as agent_name,
             timestamp
         FROM records
-        WHERE {' AND '.join(conditions)}
+        WHERE {" AND ".join(conditions)}
         ORDER BY timestamp DESC
         LIMIT {limit}
     """
@@ -213,7 +213,7 @@ async def _list_runs(args: dict[str, Any]) -> list[types.TextContent]:
         return [
             types.TextContent(
                 type="text",
-                text=f"No Logfire trace data available. Set LOGFIRE_READ_TOKEN to enable telemetry queries.",
+                text="No Logfire trace data. Set LOGFIRE_READ_TOKEN to query telemetry.",
             )
         ]
 
@@ -252,7 +252,7 @@ async def _get_run_telemetry(args: dict[str, Any]) -> list[types.TextContent]:
         return [
             types.TextContent(
                 type="text",
-                text=f"No Logfire trace data found for run `{run_id}`. Set LOGFIRE_READ_TOKEN and ensure the run was traced.",
+                text=f"No Logfire trace data for run `{run_id}`. Configure LOGFIRE_READ_TOKEN.",
             )
         ]
 

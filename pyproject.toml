@@ -45,6 +45,7 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=6.1.0",
     "ruff>=0.15.21",
+    "pyright>=1.1.400",
     "mkdocs-material>=9.6.0",
 ]
 
@@ -63,7 +64,30 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "RUF"]
+ignore = [
+    "B904",  # raise-without-from-inside-except — explicit enough with logger.exception
+    "RUF001", # ambiguous-unicode-character-string
+    "RUF012", # mutable-class-defaults — common in pydantic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B", "C4", "RUF"]
+"src/agentbox/api/routes.py" = ["B008"]  # Security() in default arg is standard FastAPI pattern
+
+[tool.pyright]
+include = ["src/agentbox"]
+exclude = ["**/__pycache__"]
+typeCheckingMode = "basic"
+reportMissingTypeStubs = false
+reportMissingImports = false
+reportIncompatibleMethodOverride = false
+reportUnusedFunction = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportGeneralTypeIssues = false
+reportAttributeAccessIssue = false
+reportArgumentType = false  # pydantic-ai Model interface evolves
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

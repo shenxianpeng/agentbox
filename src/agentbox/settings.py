@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────
     database_url: str = "postgresql://agentbox:agentbox@localhost:5432/agentbox"
     # Restricted URL for the runner (uses agentbox_runner role with RLS)
-    runner_database_url: str = "postgresql://agentbox_runner:agentbox_runner_dev@localhost:5432/agentbox"
+    runner_database_url: str = (
+        "postgresql://agentbox_runner:agentbox_runner_dev@localhost:5432/agentbox"
+    )
 
     # ── API ───────────────────────────────────────────────────
     agentbox_api_token: str = "dev-token"

@@ -2,7 +2,7 @@
 
 Estimates the cost of each run based on:
   - Token usage from model call checkpoints
-  - Compute time (wall-clock duration × configured compute cost per second)
+  - Compute time (wall-clock duration x configured compute cost per second)
 
 Cost tracking is best-effort (estimate), not a billing system.
 """

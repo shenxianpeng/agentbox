@@ -1,8 +1,8 @@
 """Demo agent definitions for the AgentBox runner.
 
 This module defines the "incident investigator" agent — a Pydantic AI agent
-that simulates an SRE investigating production incidents. It has 2–3 tools,
-at least one intentionally slow one (to make runs 30–60s long for kill-and-resume
+that simulates an SRE investigating production incidents. It has 2-3 tools,
+at least one intentionally slow one (to make runs 30-60s long for kill-and-resume
 testing).
 """
 

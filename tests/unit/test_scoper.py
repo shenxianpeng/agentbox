@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
 from agentbox.secrets.scoper import (
     build_credentials_json,
     build_credentials_response,

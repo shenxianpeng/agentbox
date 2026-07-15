@@ -101,7 +101,7 @@ def _deserialize_model_response(data: dict[str, Any]) -> ModelResponse:
     )
 
     # Map part_kind to the corresponding pydantic-ai class
-    PART_KIND_MAP = {
+    part_kind_map = {
         "text": TextPart,
         "tool-call": ToolCallPart,
         "tool-return": ToolReturnPart,
@@ -114,7 +114,7 @@ def _deserialize_model_response(data: dict[str, Any]) -> ModelResponse:
     parts = []
     for part_dict in data.get("parts", []):
         part_kind = part_dict.get("part_kind", "")
-        cls = PART_KIND_MAP.get(part_kind)
+        cls = part_kind_map.get(part_kind)
         if cls is not None:
             # Strip fields that are not constructor args
             excluded = {"part_kind", "kind"}
@@ -138,9 +138,15 @@ def _deserialize_model_response(data: dict[str, Any]) -> ModelResponse:
     elif usage_data is not None:
         kwargs["usage"] = usage_data
 
-    for field in ("timestamp", "run_id", "conversation_id",
-                  "provider_name", "provider_url", "provider_response_id",
-                  "finish_reason"):
+    for field in (
+        "timestamp",
+        "run_id",
+        "conversation_id",
+        "provider_name",
+        "provider_url",
+        "provider_response_id",
+        "finish_reason",
+    ):
         if field in data and data[field] is not None:
             kwargs[field] = data[field]
 

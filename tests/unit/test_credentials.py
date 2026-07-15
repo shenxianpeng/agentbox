@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import os
 
-import pytest
 from agentbox.runner.credentials import get_llm_api_key, load_credentials
 
 

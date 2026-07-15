@@ -20,8 +20,6 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import (
     ModelMessage,
     ModelResponse,
-    TextPart,
-    ToolCallPart,
 )
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.test import TestModel
@@ -30,7 +28,6 @@ from pydantic_ai.usage import RequestUsage as Usage
 
 from agentbox.runner.durable import DurableContext
 from agentbox.runner.durable_model import DurableModel
-
 
 # ── In-memory pool (shared with test_durable.py) ────────────
 
@@ -298,9 +295,9 @@ async def test_partial_kill_mid_execution(pool):
         system_prompt="You are an SRE assistant.",
     )
 
-    result1 = await agent1.run("Analyze the database service.")
+    await agent1.run("Analyze the database service.")  # result consumed via checkpoints
 
-    first_step_count = context1.total_steps
+    # context1.total_steps consumed implicitly
 
     # ── Phase 2: Resume with a DIFFERENT model output (simulating continued execution) ──
     fresh_model = TestModel(

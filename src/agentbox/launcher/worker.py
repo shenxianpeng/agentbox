@@ -183,7 +183,7 @@ async def launcher_loop(pool: asyncpg.Pool, backend: Any) -> None:
                 if not claimed:
                     logger.debug("No queued runs found")
             else:
-                logger.debug("At max concurrent runs (%d), waiting...", settings.max_concurrent_runs)
+                logger.debug("At max concurrent (%d), waiting...", settings.max_concurrent_runs)
 
         except Exception as exc:
             logger.exception("Error in launcher poll loop: %s", exc)
@@ -314,7 +314,7 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
         if key_info:
             real_api_key, base_url = key_info
             # Get the first per-run token from credentials
-            for scope_key, cred_info in creds.items():
+            for _scope_key, cred_info in creds.items():
                 per_run_token = cred_info["credential"]
                 await _register_with_credential_proxy(per_run_token, real_api_key, base_url)
                 break
@@ -331,7 +331,7 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
         except Exception as exc:
             logger.exception("Failed to start container for run %s: %s", run_id, exc)
             # Clean up the key mapping
-            for scope_key, cred_info in creds.items():
+            for _scope_key, cred_info in creds.items():
                 await _unregister_from_credential_proxy(cred_info["credential"])
             await release_lease(pool, run_id)
             if run["attempt"] >= run["max_attempts"]:

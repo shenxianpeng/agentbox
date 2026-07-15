@@ -20,7 +20,6 @@ import traceback
 import asyncpg
 import logfire
 
-from agentbox.db.queries import create_pool
 from agentbox.runner.agents import (
     analyze_logs,
     fetch_metrics,
@@ -254,13 +253,12 @@ async def main() -> int:
         durable_context = DurableContext(run_id, pool)
         durable = DurableModel(inner, durable_context)
         # Wrap tools with durable_tool so every tool call is checkpointed
-        from agentbox.runner.durable_tool import durable_tool
-
         # Build agent from registry using agent_name
         from agentbox.runner.agents import create_incident_investigator
+        from agentbox.runner.durable_tool import durable_tool
 
-        _AGENT_REGISTRY = {
-            "incident-investigator": lambda model, tools: create_incident_investigator(model, tools=tools),
+        _agent_registry = {
+            "incident-investigator": lambda m, t: create_incident_investigator(m, tools=t),
         }
 
         durable_tools = [
@@ -269,7 +267,7 @@ async def main() -> int:
             durable_tool(durable_context)(open_github_issue),
             durable_tool(durable_context)(fetch_url),
         ]
-        agent_factory = _AGENT_REGISTRY.get(
+        agent_factory = _agent_registry.get(
             agent_name,
             lambda model, tools: create_incident_investigator(model, tools=tools),
         )
