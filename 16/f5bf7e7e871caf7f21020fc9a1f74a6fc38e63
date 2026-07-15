@@ -1,0 +1,19 @@
+k8s/network-policy.yaml
+  s_2b9cf1c36395a7::t_8958b0a9515d59 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "16f5bf7e7e871caf7f21020fc9a1f74a6fc38e63",
+  "prompts": {},
+  "sessions": {
+    "s_2b9cf1c36395a7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6721-dd72-7a6f-9284-b2ef30a3af95",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
