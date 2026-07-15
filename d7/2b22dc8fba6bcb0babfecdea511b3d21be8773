@@ -1,0 +1,83 @@
+src/agentbox/secrets/scoper.py
+  s_31c1d66c302bb4::t_c48c0fc112c70d 68
+docs/getting-started.md
+  s_31c1d66c302bb4::t_768607d05916dd 1-170
+docker/Dockerfile.controlplane
+  s_5f8016b409262a::t_f4447d882ba111 9
+Makefile
+  s_8f1f2b41124ea5::t_964868f341b104 93
+  s_8f1f2b41124ea5::t_2198063ad41f7a 45,48-49,58-62
+  s_31c1d66c302bb4::t_3e350e70ffa128 1-5,7-9,17,19-23,28-30,33,36,39,42-44,63-81,98,101-103,107-110
+  s_8f1f2b41124ea5::t_b685e70c17589b 47,50-57
+  s_8f1f2b41124ea5::t_bbdae493444d66 87
+  s_8f1f2b41124ea5::t_dd35c2d2004b48 91
+  s_8f1f2b41124ea5::t_4011c1c28bd134 46
+src/agentbox/runner/durable_model.py
+  s_31c1d66c302bb4::t_0939ad23bfb9cb 68-69
+  s_31c1d66c302bb4::t_101f8c51d843be 86-112
+  s_31c1d66c302bb4::t_8535a82f1d1f98 161,169-170,172
+docker/Dockerfile.runner
+  s_5f8016b409262a::t_4bdafbbbd9b6d7 9
+src/agentbox/runner/durable.py
+  s_31c1d66c302bb4::t_a00ea7171822a0 139,151-174
+.github/workflows/docs-deploy.yml
+  s_31c1d66c302bb4::t_c869ab606835d4 1-54
+docs/architecture.md
+  s_31c1d66c302bb4::t_431fd25bfa6cb9 1-163
+README.md
+  s_31c1d66c302bb4::t_10384e5b1c4294 17-18,21,23-26,29-31,40,42-50,55-57,63,66
+  s_31c1d66c302bb4::t_e4f142d8d3e933 70,72,74-76
+  s_31c1d66c302bb4::t_05674d4af7caf7 8-9
+src/agentbox/runner/main.py
+  s_31c1d66c302bb4::t_90d9f6490efe1e 37-39,120-121,134-194,197,199-200,204,214-215,217,219,224,238-240,244,256,259-260
+  s_31c1d66c302bb4::t_206af6ddd3fb96 261
+CONTRIBUTING.md
+  s_31c1d66c302bb4::t_22fa969dbc184f 3,5,7-10,12-14,16-20
+src/agentbox/launcher/worker.py
+  s_31c1d66c302bb4::t_afe11e5e3c8a8f 187-188,191,195-196,204-220
+docs/development.md
+  s_31c1d66c302bb4::t_49970b7ea100a9 1-174
+mkdocs.yml
+  s_31c1d66c302bb4::t_e6b2b1f2e57649 1-68
+.gitignore
+  s_31c1d66c302bb4::t_26595631d36561 16-23
+docs/index.md
+  s_31c1d66c302bb4::t_0cb78630d9d3e3 1-82
+docker/entrypoint.sh
+  s_8f1f2b41124ea5::t_bfeaf85dddb53e 4-6
+pyproject.toml
+  s_31c1d66c302bb4::t_2704d7ffe21ef6 48,51-52
+  s_31c1d66c302bb4::t_a0a32cd5a7a72f 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d72b22dc8fba6bcb0babfecdea511b3d21be8773",
+  "prompts": {},
+  "sessions": {
+    "s_31c1d66c302bb4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6646-f427-7bb7-a192-91408d732f59",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    },
+    "s_5f8016b409262a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6631-78a3-772b-98fd-dfacc5aa8123",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    },
+    "s_8f1f2b41124ea5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6634-ce99-7cc5-8e42-fe988c606d3a",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
