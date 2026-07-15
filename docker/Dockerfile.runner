@@ -5,6 +5,11 @@ WORKDIR /app
 # Install uv for dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Create non-root user
+RUN addgroup --system --gid 1001 agentbox && \
+    adduser --system --uid 1001 --ingroup agentbox --home /app agentbox && \
+    chown -R agentbox:agentbox /app
+
 # Copy project files
 COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
@@ -12,6 +17,9 @@ COPY migrations/ ./migrations/
 
 # Install dependencies and package
 RUN uv sync --frozen --no-dev
+
+# Drop privileges
+USER agentbox
 
 # Entrypoint
 ENV PYTHONUNBUFFERED=1

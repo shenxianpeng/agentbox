@@ -1,0 +1,42 @@
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Environment
+.env
+.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Tests
+tests/
+.coverage
+coverage.xml
+
+# Documentation (not needed in runtime image)
+docs/
+site/
+*.md
+*.yml
+*.yaml
+!pyproject.toml
+
+# Docker
+docker/
+Dockerfile*
+.dockerignore
+
+# K8s
+k8s/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
