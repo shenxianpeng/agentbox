@@ -1,0 +1,21 @@
+src/agentbox/runner/durable.py
+  s_2b9cf1c36395a7::t_5e3ee2795a9012 140-142
+CHANGELOG.md
+  s_2b9cf1c36395a7::t_f1003829cd386b 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ecdc21dcc1d7eb3a80c7abb68ea0ed3a67f9dd2f",
+  "prompts": {},
+  "sessions": {
+    "s_2b9cf1c36395a7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6721-dd72-7a6f-9284-b2ef30a3af95",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
