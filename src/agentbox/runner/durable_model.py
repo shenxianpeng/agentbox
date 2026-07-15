@@ -86,28 +86,65 @@ def _estimate_cost(
 def _deserialize_model_response(data: dict[str, Any]) -> ModelResponse:
     """Rebuild a ModelResponse from a dict (as stored by dataclasses.asdict).
 
+    Handles all part types (text, tool-call, thinking, etc.) and preserves
+    all ModelResponse metadata (usage, timestamp, run_id, etc.).
+
     This is needed during replay, because checkpoints store serialized dicts
     rather than live ModelResponse objects.
     """
-    from pydantic_ai.messages import TextPart, ToolCallPart
+    from pydantic_ai.messages import (
+        TextPart,
+        ThinkingPart,
+        ToolCallPart,
+        ToolReturnPart,
+        UserPromptPart,
+    )
 
-    part_kind_map = {
+    # Map part_kind to the corresponding pydantic-ai class
+    PART_KIND_MAP = {
         "text": TextPart,
         "tool-call": ToolCallPart,
+        "tool-return": ToolReturnPart,
+        "user-prompt": UserPromptPart,
+        "thinking": ThinkingPart,
+        # "retry-prompt": RetryPromptPart,
+        # "system-prompt": SystemPromptPart,
     }
 
     parts = []
     for part_dict in data.get("parts", []):
         part_kind = part_dict.get("part_kind", "")
-        cls = part_kind_map.get(part_kind)
+        cls = PART_KIND_MAP.get(part_kind)
         if cls is not None:
-            filtered = {k: v for k, v in part_dict.items() if k != "part_kind"}
+            # Strip fields that are not constructor args
+            excluded = {"part_kind", "kind"}
+            filtered = {k: v for k, v in part_dict.items() if k not in excluded}
             parts.append(cls(**filtered))
         else:
             parts.append(part_dict)
 
-    model_name = data.get("model_name", "")
-    return ModelResponse(parts=parts, model_name=model_name)
+    # Preserve all metadata fields from the original ModelResponse
+    # Usage needs special handling: it's a dataclass that becomes a dict via asdict
+    from pydantic_ai.usage import RequestUsage
+
+    kwargs: dict[str, Any] = {
+        "parts": parts,
+        "model_name": data.get("model_name", ""),
+    }
+
+    usage_data = data.get("usage")
+    if isinstance(usage_data, dict):
+        kwargs["usage"] = RequestUsage(**usage_data)
+    elif usage_data is not None:
+        kwargs["usage"] = usage_data
+
+    for field in ("timestamp", "run_id", "conversation_id",
+                  "provider_name", "provider_url", "provider_response_id",
+                  "finish_reason"):
+        if field in data and data[field] is not None:
+            kwargs[field] = data[field]
+
+    return ModelResponse(**kwargs)
 
 
 class DurableModel(Model):
