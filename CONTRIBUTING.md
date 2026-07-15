@@ -1,31 +1,23 @@
 # Contributing to AgentBox
 
-## Development Setup
+> **📚 See the full [Development Guide](docs/development.md) for detailed instructions on setup, testing, code style, and module deep-dives.**
 
-1. **Prerequisites**: Python 3.12+, Docker, `uv` package manager.
+## Quick Start
 
-2. **Clone and install**:
+```bash
+git clone https://github.com/shenxianpeng/agentbox.git
+cd agentbox
+uv sync --all-extras --dev
 
-   ```bash
-   git clone https://github.com/shenxianpeng/agentbox.git
-   cd agentbox
-   uv sync --all-extras --dev
-   ```
+# Start Postgres
+make postgres-up
+make migrate
 
-3. **Start Postgres**:
-
-   ```bash
-   docker compose up -d postgres
-   uv run python -m agentbox.db.migrate
-   ```
-
-4. **Run tests**:
-
-   ```bash
-   make test        # all tests
-   make test-unit   # unit tests only
-   make lint        # linting
-   ```
+# Run tests
+make test        # all tests
+make test-unit   # unit tests only
+make lint        # linting
+```
 
 ## Code Style
 
@@ -40,23 +32,6 @@
 2. Run `make lint && make test` locally.
 3. Open a PR with a clear description of the changes.
 4. Ensure CI passes.
-
-## Project Structure
-
-```
-src/agentbox/       # Main source code
-  ├── api/          # FastAPI control plane
-  ├── db/           # Database layer
-  ├── launcher/     # Queue poller + sandbox backends
-  ├── runner/       # Code inside the sandbox
-  ├── mcp_server/   # MCP server
-  ├── secrets/      # Credential scoping
-  ├── cost/         # Cost tracking
-  └── settings.py   # Configuration
-tests/              # Tests
-  ├── unit/         # Unit tests
-  └── e2e/          # Integration tests
-```
 
 ## License
 

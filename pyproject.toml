@@ -45,7 +45,11 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=6.1.0",
     "ruff>=0.15.21",
+    "mkdocs-material>=9.6.0",
 ]
+
+[tool.mkdocs]
+# mkdocs configuration is in mkdocs.yml at the project root
 
 [build-system]
 requires = ["hatchling"]

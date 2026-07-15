@@ -65,7 +65,7 @@ def build_credentials_json(credentials: list[dict[str, Any]]) -> str:
     creds_map = {}
     for cred in credentials:
         creds_map[cred["scope"]] = {
-            "credential": cred.get("_credential", ""),
+            "credential": cred.get("credential", ""),
             "expires_at": (
                 cred["expires_at"].isoformat()
                 if hasattr(cred["expires_at"], "isoformat")

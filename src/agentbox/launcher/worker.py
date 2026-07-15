@@ -184,6 +184,27 @@ async def launcher_loop(pool: asyncpg.Pool, backend: Any) -> None:
         await asyncio.sleep(POLL_INTERVAL)
 
 
+async def _fetch_scoped_credentials(pool: asyncpg.Pool, run_id: str) -> dict[str, Any]:
+    """Fetch scoped credentials from DB and format them for the runner."""
+    async with pool.acquire() as conn:
+        cred_rows = await conn.fetch(
+            "SELECT scope, credential, expires_at FROM scoped_credentials WHERE run_id = $1::uuid",
+            run_id,
+        )
+
+    return {
+        f"llm:{row['scope'].replace('llm:', '')}": {
+            "credential": row["credential"],
+            "expires_at": (
+                row["expires_at"].isoformat()
+                if hasattr(row["expires_at"], "isoformat")
+                else str(row["expires_at"])
+            ),
+        }
+        for row in cred_rows
+    }
+
+
 async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> None:
     """Handle a claimed run: create lease, inject credentials, start container."""
     run_id = str(run["id"])
@@ -196,27 +217,7 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
     )
 
     await create_lease(pool, run_id)
-
-    async with pool.acquire() as conn:
-        cred_rows = await conn.fetch(
-            """
-            SELECT scope, credential, expires_at
-            FROM scoped_credentials
-            WHERE run_id = $1::uuid
-            """,
-            run_id,
-        )
-
-    creds_json = {}
-    for row in cred_rows:
-        creds_json[f"llm:{run['agent_name']}"] = {
-            "credential": row["credential"],
-            "expires_at": (
-                row["expires_at"].isoformat()
-                if hasattr(row["expires_at"], "isoformat")
-                else str(row["expires_at"])
-            ),
-        }
+    creds_json = await _fetch_scoped_credentials(pool, run_id)
 
     try:
         backend.start_run(

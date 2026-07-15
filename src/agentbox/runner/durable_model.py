@@ -63,10 +63,10 @@ def _messages_fingerprint(messages: list[ModelMessage]) -> str:
 
 def _serialize_message(msg: ModelMessage) -> dict[str, Any]:
     """Serialize a ModelMessage to a JSON-compatible dict."""
-    if dataclasses.is_dataclass(msg) and not isinstance(msg, type):
-        return dataclasses.asdict(msg)
     if hasattr(msg, "model_dump"):
         return msg.model_dump()
+    if dataclasses.is_dataclass(msg) and not isinstance(msg, type):
+        return dataclasses.asdict(msg)
     return {"kind": msg.kind, "parts": [str(p) for p in getattr(msg, "parts", [])]}
 
 
@@ -81,6 +81,33 @@ def _estimate_cost(
     """
     rates = MODEL_COST_RATES.get(model_name, {"input": 0.00015, "output": 0.00060})
     return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1000
+
+
+def _deserialize_model_response(data: dict[str, Any]) -> ModelResponse:
+    """Rebuild a ModelResponse from a dict (as stored by dataclasses.asdict).
+
+    This is needed during replay, because checkpoints store serialized dicts
+    rather than live ModelResponse objects.
+    """
+    from pydantic_ai.messages import TextPart, ToolCallPart
+
+    part_kind_map = {
+        "text": TextPart,
+        "tool-call": ToolCallPart,
+    }
+
+    parts = []
+    for part_dict in data.get("parts", []):
+        part_kind = part_dict.get("part_kind", "")
+        cls = part_kind_map.get(part_kind)
+        if cls is not None:
+            filtered = {k: v for k, v in part_dict.items() if k != "part_kind"}
+            parts.append(cls(**filtered))
+        else:
+            parts.append(part_dict)
+
+    model_name = data.get("model_name", "")
+    return ModelResponse(parts=parts, model_name=model_name)
 
 
 class DurableModel(Model):
@@ -131,8 +158,7 @@ class DurableModel(Model):
         fingerprint = _messages_fingerprint(messages)
 
         async def _do_request() -> ModelResponse:
-            response = await self._inner.request(messages, model_settings, model_request_parameters)
-            return response
+            return await self._inner.request(messages, model_settings, model_request_parameters)
 
         result = await self._context.step(
             kind="model_call",
@@ -140,32 +166,10 @@ class DurableModel(Model):
             fingerprint=fingerprint,
         )
 
-        # Deserialize if needed: the checkpoint stores a nested dict
-        # (from dataclasses.asdict), which we need to reconstruct into a ModelResponse
+        # On replay, checkpoint stores a dataclass-asdict dict.
+        # Reconstruct it into a proper ModelResponse.
         if isinstance(result, dict):
-            try:
-                from pydantic_ai.messages import TextPart, ToolCallPart
-
-                parts = []
-                for part_dict in result.get("parts", []):
-                    part_kind = part_dict.get("part_kind", "")
-                    if part_kind == "text":
-                        filtered = {k: v for k, v in part_dict.items() if k != "part_kind"}
-                        parts.append(TextPart(**filtered))
-                    elif part_kind == "tool-call":
-                        filtered = {k: v for k, v in part_dict.items() if k != "part_kind"}
-                        parts.append(ToolCallPart(**filtered))
-                    else:
-                        # Fallback: just pass the dict
-                        parts.append(part_dict)
-
-                # Reconstruct ModelResponse with deserialized parts
-                result = ModelResponse(
-                    parts=parts,
-                    model_name=result.get("model_name", ""),
-                )
-            except (TypeError, ValueError) as exc:
-                logger.warning("Failed to deserialize ModelResponse from checkpoint: %s", exc)
+            return _deserialize_model_response(result)
 
         return result
 

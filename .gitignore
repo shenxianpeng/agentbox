@@ -13,5 +13,13 @@ dist/
 # Environment
 .env
 
+# Build artifacts
+site/
+.coverage
+*.xml
+
+# pytest
+.pytest_cache/
+
 # OS
 .DS_Store

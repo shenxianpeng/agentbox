@@ -136,7 +136,7 @@ class DurableContext:
         idx = self._step_counter
         self._step_counter += 1
 
-        # Check for existing checkpoint
+        # Use a single connection for read + optional write
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -148,30 +148,30 @@ class DurableContext:
                 idx,
             )
 
-        if row is not None:
-            # Replay: return stored result without calling fn
-            if fingerprint is not None and row["fingerprint"] != fingerprint:
-                logger.warning(
-                    "Fingerprint mismatch at step %d (run %s): expected %s, got %s. "
-                    "This indicates non-determinism in the agent.",
-                    idx,
-                    self._run_id,
-                    fingerprint,
-                    row["fingerprint"],
-                )
+            if row is not None:
+                # Replay: return stored result without calling fn
+                if fingerprint is not None and row["fingerprint"] != fingerprint:
+                    logger.warning(
+                        "Fingerprint mismatch at step %d (run %s): "
+                        "expected %s, got %s. "
+                        "This indicates non-determinism in the agent.",
+                        idx,
+                        self._run_id,
+                        fingerprint,
+                        row["fingerprint"],
+                    )
 
-            self._replayed_count += 1
-            payload_data = row["payload"]
-            if isinstance(payload_data, str):
-                return _deserialize_payload(payload_data)
-            return payload_data
+                self._replayed_count += 1
+                payload_data = row["payload"]
+                if isinstance(payload_data, str):
+                    return _deserialize_payload(payload_data)
+                return payload_data
 
-        # Live execution
-        result = await fn()
-        serialized = _serialize_payload(result)
+            # Live execution
+            result = await fn()
+            serialized = _serialize_payload(result)
 
-        # Store checkpoint
-        async with self._pool.acquire() as conn:
+            # Store checkpoint (same connection)
             await conn.execute(
                 """
                 INSERT INTO checkpoints

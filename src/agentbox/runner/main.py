@@ -34,6 +34,9 @@ LEASE_HEARTBEAT_INTERVAL = 5  # seconds
 LEASE_TTL = 30  # seconds — launcher reclaims lease if no heartbeat
 
 
+# ── Helper functions ─────────────────────────────────────────────────────────
+
+
 async def heartbeat_lease(pool: asyncpg.Pool, run_id: str) -> None:
     """Periodically update the lease heartbeat."""
     while True:
@@ -114,20 +117,13 @@ async def get_lease_owner(pool: asyncpg.Pool, run_id: str) -> str:
     return instance_id
 
 
-async def main() -> int:
-    """Run the agent and return exit code (0=success, 1=error)."""
-    run_id = os.environ.get(RUN_ID_ENV_VAR)
-    if not run_id:
-        logger.error("%s not set — cannot start runner", RUN_ID_ENV_VAR)
-        return 1
-
-    # Configure logging
+def _setup_logging(run_id: str) -> None:
+    """Configure logging and Logfire for the run."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    # Configure Logfire
     if settings.logfire_token:
         logfire.configure(
             token=settings.logfire_token,
@@ -135,19 +131,77 @@ async def main() -> int:
         )
         logfire.info("Runner starting", extra={"run_id": run_id})
 
+
+def _build_model(creds: dict) -> tuple:
+    """Build the LLM model based on available credentials.
+
+    Returns (inner_model, model_name) tuple.
+    Raises RuntimeError if no API key is available.
+    """
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.models.openai import OpenAIModel
+
+    api_key = get_llm_api_key(creds, settings.model_name)
+
+    if api_key:
+        return OpenAIModel(
+            settings.model_name,
+            api_key=api_key,
+            base_url=(
+                "https://api.deepseek.com/v1" if "deepseek" in settings.model_name else None
+            ),
+        ), settings.model_name
+
+    if settings.anthropic_api_key:
+        return AnthropicModel(
+            "claude-sonnet-4-20250514",
+            api_key=settings.anthropic_api_key,
+        ), "claude-sonnet-4-20250514"
+
+    raise RuntimeError(f"No API key available for model {settings.model_name}")
+
+
+async def _calculate_total_cost(pool: asyncpg.Pool, run_id: str) -> float:
+    """Sum checkpoint costs for a run."""
+    async with pool.acquire() as conn:
+        cost_row = await conn.fetchrow(
+            "SELECT SUM(cost) as total_cost FROM checkpoints WHERE run_id = $1::uuid",
+            run_id,
+        )
+    return float(cost_row["total_cost"]) if cost_row and cost_row["total_cost"] else 0.0
+
+
+async def _set_run_status(pool: asyncpg.Pool, run_id: str, status: str) -> None:
+    """Update the run's status in the database."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE runs SET status = $2, started_at = now() WHERE id = $1::uuid",
+            run_id,
+            status,
+        )
+
+
+# ── Main entrypoint ──────────────────────────────────────────────────────────
+
+
+async def main() -> int:
+    """Run the agent and return exit code (0=success, 1=error)."""
+    run_id = os.environ.get(RUN_ID_ENV_VAR)
+    if not run_id:
+        logger.error("%s not set — cannot start runner", RUN_ID_ENV_VAR)
+        return 1
+
+    _setup_logging(run_id)
     logger.info("Runner starting for run %s", run_id)
 
+    pool = await create_pool(settings.database_url)
+
     try:
-        # Connect to database
-        pool = await create_pool(settings.database_url)
-
-        # Get or create lease
+        # Claim lease and start heartbeat
         await get_lease_owner(pool, run_id)
-
-        # Start heartbeat in background
         heartbeat_task = asyncio.create_task(heartbeat_lease(pool, run_id))
 
-        # Fetch run details
+        # Load run details
         run_row = await get_run_row(pool, run_id)
         if run_row is None:
             logger.error("Run %s not found in database", run_id)
@@ -157,54 +211,23 @@ async def main() -> int:
         agent_name = run_row["agent_name"]
         prompt = run_row["prompt"]
 
-        # Update status to running
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE runs SET status = 'running', started_at = now() WHERE id = $1::uuid",
-                run_id,
-            )
+        # Mark as running
+        await _set_run_status(pool, run_id, "running")
 
-        # Load scoped credentials
+        # Build the durable agent
         creds = load_credentials()
-        api_key = get_llm_api_key(creds, settings.model_name)
-
-        # Build the agent with durable model
-        # We use OpenAIModel (for DeepSeek-compatible API) or Anthropic
-        from pydantic_ai.models.openai import OpenAIModel
-
-        if api_key:
-            # Use the scoped credential
-            inner = OpenAIModel(
-                settings.model_name,
-                api_key=api_key,
-                base_url=(
-                    "https://api.deepseek.com/v1" if "deepseek" in settings.model_name else None
-                ),
-            )
-        elif settings.anthropic_api_key:
-            from pydantic_ai.models.anthropic import AnthropicModel
-
-            inner = AnthropicModel(
-                "claude-sonnet-4-20250514",
-                api_key=settings.anthropic_api_key,
-            )
-        else:
-            logger.error("No API key available for model %s", settings.model_name)
-            return 1
-
+        inner, _ = _build_model(creds)
         durable_context = DurableContext(run_id, pool)
         durable = DurableModel(inner, durable_context)
         agent = create_incident_investigator(durable)
 
-        # Logfire span attributes
+        # Execute the agent
         logfire_span = logfire.span(
             "agent-run",
             run_id=run_id,
             tenant_id=tenant_id,
             agent_name=agent_name,
         )
-
-        # Run the agent
         with logfire_span:
             logger.info("Starting agent execution: %s", agent_name)
             result = await agent.run(prompt)
@@ -212,49 +235,29 @@ async def main() -> int:
 
         logger.info("Agent execution completed: %s", agent_name)
 
-        # Calculate cost estimate
-        total_cost = 0.0
-        async with pool.acquire() as conn:
-            cost_row = await conn.fetchrow(
-                "SELECT SUM(cost) as total_cost FROM checkpoints WHERE run_id = $1::uuid",
-                run_id,
-            )
-            if cost_row and cost_row["total_cost"]:
-                total_cost = float(cost_row["total_cost"])
-
-        # Write success result
-        await update_run_result(
-            pool,
-            run_id,
-            "succeeded",
-            result=output,
-            cost_estimate=total_cost,
-        )
+        # Calculate cost and write result
+        total_cost = await _calculate_total_cost(pool, run_id)
+        await update_run_result(pool, run_id, "succeeded", result=output, cost_estimate=total_cost)
 
         logger.info("Run %s completed successfully (cost: $%.6f)", run_id, total_cost)
 
-        # Stop heartbeat
+        # Cleanup
         heartbeat_task.cancel()
         try:
             await heartbeat_task
         except asyncio.CancelledError:
             pass
 
-        await pool.close()
         return 0
 
     except Exception as exc:
         logger.exception("Runner failed for run %s", run_id)
         error_msg = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-
-        try:
-            pool = await create_pool(settings.database_url)
-            await update_run_result(pool, run_id, "failed", error=error_msg)
-            await pool.close()
-        except Exception:
-            logger.exception("Failed to write error result for run %s", run_id)
-
+        await update_run_result(pool, run_id, "failed", error=error_msg)
         return 1
+
+    finally:
+        await pool.close()
 
 
 if __name__ == "__main__":
