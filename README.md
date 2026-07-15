@@ -5,8 +5,8 @@
 
 <div align="center">
   <a href="https://github.com/shenxianpeng/agentbox/actions/workflows/ci.yml"><img src="https://github.com/shenxianpeng/agentbox/actions/workflows/ci.yml/badge.svg?event=push" alt="CI"></a>
-  <a href="https://pypi.python.org/pypi/agentbox"><img src="https://img.shields.io/pypi/v/agentbox.svg" alt="PyPI"></a>
-  <a href="https://github.com/shenxianpeng/agentbox"><img src="https://img.shields.io/pypi/pyversions/agentbox.svg" alt="versions"></a>
+  <!-- <a href="https://pypi.python.org/pypi/agentbox"><img src="https://img.shields.io/pypi/v/agentbox.svg" alt="PyPI"></a>
+  <a href="https://github.com/shenxianpeng/agentbox"><img src="https://img.shields.io/pypi/pyversions/agentbox.svg" alt="versions"></a> -->
   <a href="https://github.com/shenxianpeng/agentbox/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shenxianpeng/agentbox.svg" alt="license"></a>
 </div>
 
@@ -40,7 +40,7 @@ Running AI agents in production is hard. They're long-lived, expensive, and cras
                           Postgres ◄────────────────────────┐
                               ▲   checkpoints, leases,      │
         poll queue            │   heartbeats, results,      │
-  launcher/worker ────────────┘   credentials              │
+  launcher/worker ────────────┘   credentials               │
         │  claims run (FOR UPDATE SKIP LOCKED)              │
         │  injects scoped credentials into sandbox          │
         ▼                                                   │
