@@ -222,7 +222,7 @@ async def main() -> int:
 
     # Use the restricted runner role + set app.run_id for Row-Level Security
     async def _init_conn(conn: asyncpg.Connection) -> None:
-        await conn.execute("SET app.run_id = $1::text", run_id)
+        await conn.execute("SELECT set_config('app.run_id', $1, false)", run_id)
 
     pool = await asyncpg.create_pool(
         settings.runner_database_url,
