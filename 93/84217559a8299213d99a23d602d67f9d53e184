@@ -1,0 +1,19 @@
+k8s/job-template.yaml
+  s_3ed6ac2a4654e2::t_0710d0f53d6ec9 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9384217559a8299213d99a23d602d67f9d53e184",
+  "prompts": {},
+  "sessions": {
+    "s_3ed6ac2a4654e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6bb3-5e85-7203-9ea2-b3a4ce54bb6c",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
