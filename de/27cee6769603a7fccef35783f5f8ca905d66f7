@@ -1,0 +1,19 @@
+pyproject.toml
+  s_dd2ce2f719b5cd::t_66b8a23b41566e 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "de27cee6769603a7fccef35783f5f8ca905d66f7",
+  "prompts": {},
+  "sessions": {
+    "s_dd2ce2f719b5cd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6c1b-e7cb-7797-8d5c-4217dafe10fb",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": null
+    }
+  }
+}
