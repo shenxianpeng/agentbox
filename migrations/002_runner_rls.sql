@@ -37,7 +37,7 @@ ALTER TABLE runs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY runner_select_own_run ON runs
     FOR SELECT
     TO agentbox_runner
-    USING (true);  -- runner can read any run (needed for validation)
+    USING (id::text = current_setting('app.run_id', true));  -- scoped to own run
 
 CREATE POLICY runner_update_own_run ON runs
     FOR UPDATE
