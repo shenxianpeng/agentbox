@@ -23,6 +23,7 @@ coverage.xml
 docs/
 site/
 *.md
+!README.md
 *.yml
 *.yaml
 !pyproject.toml
