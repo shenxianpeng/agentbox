@@ -26,6 +26,7 @@ spec:
         agentbox.run_id: "<RUN_ID>"
     spec:
       serviceAccountName: agentbox-launcher
+      automountServiceAccountToken: false
 <RUNTIME_CLASS>
       containers:
         - name: runner
