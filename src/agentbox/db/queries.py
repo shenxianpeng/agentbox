@@ -113,6 +113,28 @@ async def insert_scoped_credential(
     return dict(row)
 
 
+async def cancel_run(pool: asyncpg.Pool, run_id: str) -> dict[str, Any] | None:
+    """Cancel a run by setting status to 'canceled' and returning finished_at.
+
+    Only cancels runs that are 'queued' or 'running' (not already finished).
+    Returns the updated run row, or None if not found or already finished.
+    """
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE runs
+            SET status = 'canceled', finished_at = now(), error = 'Canceled by user'
+            WHERE id = $1::uuid
+              AND status IN ('queued', 'running')
+            RETURNING id, status, tenant_id, agent_name, prompt, egress_allow,
+                      attempt, max_attempts, created_at, started_at, finished_at,
+                      result, error, cost_estimate
+            """,
+            run_id,
+        )
+    return dict(row) if row else None
+
+
 async def get_scoped_credentials(pool: asyncpg.Pool, run_id: str) -> list[dict[str, Any]]:
     """Fetch all scoped credentials for a run."""
     async with pool.acquire() as conn:

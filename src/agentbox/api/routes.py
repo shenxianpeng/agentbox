@@ -163,6 +163,35 @@ async def create_run(
     return _run_to_response(run, creds)
 
 
+@router.put("/runs/{run_id}/cancel", response_model=RunResponse)
+async def cancel_run(
+    run_id: str,
+    pool: PoolDep,
+) -> Any:
+    """Cancel a run by ID.
+
+    Only 'queued' or 'running' runs can be canceled. Runs that have already
+    succeeded, failed, or been canceled are left unchanged.
+    """
+    from agentbox.db.queries import cancel_run as db_cancel_run
+
+    run = await db_cancel_run(pool, run_id)
+    if run is None:
+        # Check if the run exists at all
+        from agentbox.db.queries import get_run
+
+        existing = await get_run(pool, run_id)
+        if existing is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Run not found"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Run is already in status '{existing['status']}' and cannot be canceled",
+        )
+    return _run_to_response(run)
+
+
 @router.get("/runs/{run_id}", response_model=RunResponse)
 async def read_run(
     run_id: str,
