@@ -118,4 +118,4 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Verify runner image
-        run: docker run --rm agentbox-runner:ci python -c "from agentbox.runner.durable import DurableContext; print('Runner image OK')"
+        run: docker run --rm agentbox-runner:ci uv run python -c "from agentbox.runner.durable import DurableContext; print('Runner image OK')"
