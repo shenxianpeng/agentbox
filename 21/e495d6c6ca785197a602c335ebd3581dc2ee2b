@@ -1,0 +1,22 @@
+docker/credential_proxy.py
+  s_3ed6ac2a4654e2::t_4168607090331a 25,39,41,78,110,114-117,119,123,189-204
+  s_3ed6ac2a4654e2::t_557197b0cd0915 205
+src/agentbox/launcher/worker.py
+  s_3ed6ac2a4654e2::t_0f6497c6b9ee97 236,248-254,257,323-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "21e495d6c6ca785197a602c335ebd3581dc2ee2b",
+  "prompts": {},
+  "sessions": {
+    "s_3ed6ac2a4654e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6bb3-5e85-7203-9ea2-b3a4ce54bb6c",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
