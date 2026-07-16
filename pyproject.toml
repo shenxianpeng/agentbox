@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
@@ -46,7 +47,7 @@ dev = [
     "pytest-cov>=6.1.0",
     "ruff>=0.15.21",
     "pyright>=1.1.400",
-    "mkdocs-material>=9.6.0",
+    "mkdocs-ng-material>=9.6.0",
 ]
 
 [tool.mkdocs]
