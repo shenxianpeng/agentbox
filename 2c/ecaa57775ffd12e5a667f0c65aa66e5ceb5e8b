@@ -1,0 +1,21 @@
+src/agentbox/db/queries.py
+  s_3ed6ac2a4654e2::t_37373a4b43f84b 116-137
+src/agentbox/api/routes.py
+  s_3ed6ac2a4654e2::t_f1a6f5b8b80a27 166-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2cecaa57775ffd12e5a667f0c65aa66e5ceb5e8b",
+  "prompts": {},
+  "sessions": {
+    "s_3ed6ac2a4654e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6bb3-5e85-7203-9ea2-b3a4ce54bb6c",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
