@@ -16,7 +16,7 @@ COPY src/ ./src/
 COPY migrations/ ./migrations/
 
 # Install dependencies and package
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-editable
 
 # Drop privileges
 USER agentbox

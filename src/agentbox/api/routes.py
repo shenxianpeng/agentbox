@@ -182,9 +182,7 @@ async def cancel_run(
 
         existing = await get_run(pool, run_id)
         if existing is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Run not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Run is already in status '{existing['status']}' and cannot be canceled",
