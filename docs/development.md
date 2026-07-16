@@ -48,12 +48,13 @@ make lint
 ```
 tests/
 ├── unit/
-│   ├── test_durable.py       # Core checkpoint/replay tests
-│   ├── test_mcp_server.py    # MCP server tests
-│   └── test_placeholder.py   # Placeholder
+│   ├── test_durable.py          # Core checkpoint/replay tests
+│   ├── test_mcp_server.py       # MCP server tests
+│   ├── test_cost.py             # Cost tracking tests
+│   └── test_kill_and_resume.py  # Unit test with TestModel
 └── e2e/
-    ├── test_api.py            # API integration tests
-    └── test_kill_and_resume.py  # Kill-and-resume demo test
+    ├── test_api.py              # API integration tests
+    └── test_kill_and_resume.py  # Kill-and-resume demo test (requires Docker)
 ```
 
 ### Writing Tests
@@ -112,13 +113,13 @@ src/agentbox/       # Main source code
 ├── mcp_server/     # MCP server for telemetry
 │   └── server.py
 ├── runner/         # Code inside the sandbox
-│   ├── main.py         # Runner entrypoint
+│   ├── main.py         # Runner entrypoint (sets app.run_id via set_config)
 │   ├── durable.py      # Core checkpoint/replay engine
 │   ├── durable_model.py  # pydantic-ai Model wrapper
 │   ├── durable_tool.py   # Tool checkpointing decorator
 │   ├── agents.py        # Demo agent definitions
 │   └── credentials.py   # Scoped credential loader
-├── secrets/        # Credential scoping
+├── secrets/        # Credential scoping (per-run token minting)
 │   └── scoper.py
 └── settings.py     # pydantic-settings configuration
 ```
@@ -160,7 +161,9 @@ The launcher runs two concurrent loops:
 - **Poll loop**: claims queued runs (round-robin across tenants) and starts containers
 - **Reaper loop**: finds dead leases and requeues or fails runs
 
-The `_handle_claimed_run()` method orchestrates lease creation, credential injection, and container startup.
+The `_handle_claimed_run()` method orchestrates lease creation, credential proxy registration, and container startup.
+
+The launcher registers `{per_run_token → real_api_key}` with the credential proxy at `/admin/keys`. The per-run token is fetched from `scoped_credentials` (which stores only a UUID, NOT the master key). On container start failure, the key mapping is unregistered from the proxy.
 
 ## Making Changes
 

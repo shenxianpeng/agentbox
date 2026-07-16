@@ -27,8 +27,9 @@ Running AI agents in production is hard:
 
 **AgentBox solves this** with:
 - **Durable execution**: every model call and tool call is checkpointed to Postgres. Kill the container mid-run? The run resumes from the last checkpoint with **zero repeated LLM calls**.
-- **Sandboxing**: containers with resource limits, read-only rootfs, and default-deny egress.
-- **Least-privilege credentials**: master API keys never enter the sandbox.
+- **Sandboxing**: containers with resource limits, read-only rootfs, and default-deny egress via an allowlist proxy.
+- **Least-privilege credentials**: master API keys never enter the sandbox or the database. A **credential proxy** stores real keys in-memory; the sandbox only gets a per-run token.
+- **Row-Level Security**: the runner connects to Postgres via a restricted role (`agentbox_runner`) with RLS enforcing per-run data isolation.
 - **Full observability**: every span (API → scheduler → container → model/tool call) is traced in Logfire.
 - **Cost tracking**: estimated USD cost per run (LLM tokens + compute time).
 
@@ -71,7 +72,7 @@ See the full [documentation](docs/index.md) for details on:
 
 | Topic | Description |
 |---|---|
-| [📖 Architecture](docs/architecture.md) | System design, durable execution, credential scoping |
+| [📖 Architecture](docs/architecture.md) | System design, durable execution, credential proxy, RLS |
 | [🚀 Getting Started](docs/getting-started.md) | Full setup guide, Makefile reference, Kubernetes |
 | [🛠️ Development](docs/development.md) | Contributing, testing, code style, module deep-dives |
 
