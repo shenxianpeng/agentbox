@@ -1,0 +1,19 @@
+docker/Dockerfile.runner
+  s_3ed6ac2a4654e2::t_a0f9a54730dbe9 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "00375c3aa63add6f0d8496a16efc08984b2db754",
+  "prompts": {},
+  "sessions": {
+    "s_3ed6ac2a4654e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f6bb3-5e85-7203-9ea2-b3a4ce54bb6c",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
