@@ -24,4 +24,4 @@ USER agentbox
 
 # Entrypoint
 ENV PYTHONUNBUFFERED=1
-ENTRYPOINT ["uv", "run", "python", "-m", "agentbox.runner.main"]
+CMD ["uv", "run", "python", "-m", "agentbox.runner.main"]
