@@ -22,6 +22,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -35,8 +36,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── Key store ──────────────────────────────────────────────
-# In-memory mapping: per_run_token → {api_key, base_url}
+# In-memory mapping: per_run_token → {api_key, base_url, expires_at}
 # Populated by the launcher via the admin API.
+# Keys with expires_at in the past are rejected on proxy requests.
 KEY_STORE: dict[str, dict[str, str]] = {}
 
 ADMIN_API_TOKEN = os.environ.get("AGENTBOX_API_TOKEN", "dev-token")
@@ -73,6 +75,7 @@ class RegisterKeyRequest(BaseModel):
     run_token: str = Field(..., description="Per-run token that the sandbox will use")
     api_key: str = Field(..., description="Real LLM API key (never enters the sandbox)")
     base_url: str = Field(..., description="Upstream LLM API base URL (e.g. https://api.deepseek.com)")
+    expires_at: str | None = Field(default=None, description="ISO-8601 expiry timestamp; if set, key is rejected after this time")
 
 
 class RegisterKeyResponse(BaseModel):
@@ -104,15 +107,20 @@ async def register_key(body: RegisterKeyRequest, request: Request):
     if body.run_token in KEY_STORE:
         logger.warning("Overwriting existing key for token prefix %s", body.run_token[:8])
 
-    KEY_STORE[body.run_token] = {
+    entry: dict[str, str] = {
         "api_key": body.api_key,
         "base_url": body.base_url.rstrip("/"),
     }
+    if body.expires_at:
+        entry["expires_at"] = body.expires_at
+
+    KEY_STORE[body.run_token] = entry
     logger.info(
-        "Registered key for token %s... -> %s (%d keys in store)",
+        "Registered key for token %s... -> %s (%d keys in store, expires=%s)",
         body.run_token[:8],
         body.base_url,
         len(KEY_STORE),
+        body.expires_at or "never",
     )
     return RegisterKeyResponse(status="ok", token_prefix=body.run_token[:8])
 
@@ -177,6 +185,23 @@ async def proxy(request: Request, path: str) -> Response:
             status_code=403,
             media_type="application/json",
         )
+
+    # Check TTL
+    expires_at = key_entry.get("expires_at")
+    if expires_at:
+        try:
+            if datetime.now(UTC) > datetime.fromisoformat(expires_at):
+                logger.warning(
+                    "Expired token %s... (expired at %s)", token[:8], expires_at
+                )
+                del KEY_STORE[token]
+                return Response(
+                    content='{"error": "Run token has expired"}',
+                    status_code=403,
+                    media_type="application/json",
+                )
+        except ValueError:
+            logger.warning("Invalid expires_at format for token %s...: %s", token[:8], expires_at)
 
     real_api_key = key_entry["api_key"]
     base_url = key_entry["base_url"]

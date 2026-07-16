@@ -233,6 +233,7 @@ async def _register_with_credential_proxy(
     per_run_token: str,
     real_api_key: str,
     base_url: str,
+    expires_at: str | None = None,
 ) -> None:
     """Register the per-run token → real API key mapping with the credential proxy.
 
@@ -244,13 +245,16 @@ async def _register_with_credential_proxy(
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
+            payload: dict[str, str] = {
+                "run_token": per_run_token,
+                "api_key": real_api_key,
+                "base_url": base_url,
+            }
+            if expires_at:
+                payload["expires_at"] = expires_at
             resp = await client.post(
                 f"{proxy_url}/admin/keys",
-                json={
-                    "run_token": per_run_token,
-                    "api_key": real_api_key,
-                    "base_url": base_url,
-                },
+                json=payload,
                 headers={"Authorization": f"Bearer {settings.agentbox_api_token}"},
             )
             if resp.status_code != 200:
@@ -316,7 +320,10 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
             # Get the first per-run token from credentials
             for _scope_key, cred_info in creds.items():
                 per_run_token = cred_info["credential"]
-                await _register_with_credential_proxy(per_run_token, real_api_key, base_url)
+                expires_at = cred_info.get("expires_at")
+                await _register_with_credential_proxy(
+                    per_run_token, real_api_key, base_url, expires_at
+                )
                 break
         else:
             logger.warning("No LLM API key configured — runs will fail")
