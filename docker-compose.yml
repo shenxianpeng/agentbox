@@ -97,7 +97,11 @@ volumes:
 
 networks:
   agentbox-control:
+    # Explicit name: the launcher attaches runner containers by this exact
+    # name (DockerBackend), so it must not get the compose project prefix.
+    name: agentbox-control
     driver: bridge
   agentbox-internal:
+    name: agentbox-internal
     driver: bridge
     internal: true
