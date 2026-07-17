@@ -46,7 +46,13 @@ async def claim_next_run(
     pool: asyncpg.Pool,
     tenant_id: str | None = None,
 ) -> dict | None:
-    """Claim the next queued run for a tenant (or any tenant)."""
+    """Claim the next queued run for a tenant (or any tenant).
+
+    Enforces the tenant's max_concurrent limit: no run is claimed while the
+    tenant already has max_concurrent runs in 'running' status. The count is
+    evaluated inside the claim statement, so a single launcher cannot exceed
+    the limit; with multiple launcher replicas the limit is approximate.
+    """
     if tenant_id is None:
         tenant_id = "00000000-0000-0000-0000-000000000001"
 
@@ -56,11 +62,18 @@ async def claim_next_run(
             UPDATE runs
             SET status = 'running', attempt = attempt + 1, started_at = now()
             WHERE id = (
-                SELECT id FROM runs
-                WHERE status = 'queued' AND tenant_id = $1::uuid
-                ORDER BY created_at ASC
+                SELECT r.id
+                FROM runs r
+                JOIN tenants t ON t.id = r.tenant_id
+                WHERE r.status = 'queued'
+                  AND r.tenant_id = $1::uuid
+                  AND (
+                      SELECT COUNT(*) FROM runs r2
+                      WHERE r2.tenant_id = r.tenant_id AND r2.status = 'running'
+                  ) < t.max_concurrent
+                ORDER BY r.created_at ASC
                 LIMIT 1
-                FOR UPDATE SKIP LOCKED
+                FOR UPDATE OF r SKIP LOCKED
             )
             RETURNING id, tenant_id, agent_name, prompt, egress_allow, attempt, max_attempts
             """,
