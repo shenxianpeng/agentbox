@@ -149,3 +149,41 @@ async def test_unauthorized_access():
         assert response.status_code == 401
 
     await pool.close()
+
+
+@pytest.mark.asyncio
+async def test_invalid_run_id_returns_422(client: AsyncClient):
+    """A malformed run ID is rejected with 422, not a 500 from the DB layer."""
+    for path in (
+        "/runs/not-a-uuid",
+        "/runs/not-a-uuid/checkpoints",
+        "/runs/not-a-uuid/cost",
+    ):
+        resp = await client.get(path)
+        assert resp.status_code == 422, f"{path}: expected 422, got {resp.status_code}"
+
+    resp = await client.put("/runs/not-a-uuid/cancel")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_cancel_run(client: AsyncClient):
+    """PUT /runs/{id}/cancel cancels a queued run; a second cancel returns 409."""
+    response = await client.post(
+        "/runs",
+        json={"agent_name": "cancel-test", "prompt": "Cancel me."},
+    )
+    assert response.status_code == 201
+    run_id = response.json()["id"]
+
+    resp = await client.put(f"/runs/{run_id}/cancel")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "canceled"
+
+    # Already canceled -> 409
+    resp = await client.put(f"/runs/{run_id}/cancel")
+    assert resp.status_code == 409
+
+    # Unknown but well-formed UUID -> 404
+    resp = await client.put("/runs/00000000-0000-0000-0000-00000000dead/cancel")
+    assert resp.status_code == 404

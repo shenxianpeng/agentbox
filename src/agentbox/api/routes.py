@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Annotated, Any
 
 import asyncpg
@@ -165,7 +166,7 @@ async def create_run(
 
 @router.put("/runs/{run_id}/cancel", response_model=RunResponse)
 async def cancel_run(
-    run_id: str,
+    run_id: uuid.UUID,
     pool: PoolDep,
 ) -> Any:
     """Cancel a run by ID.
@@ -175,12 +176,12 @@ async def cancel_run(
     """
     from agentbox.db.queries import cancel_run as db_cancel_run
 
-    run = await db_cancel_run(pool, run_id)
+    run = await db_cancel_run(pool, str(run_id))
     if run is None:
         # Check if the run exists at all
         from agentbox.db.queries import get_run
 
-        existing = await get_run(pool, run_id)
+        existing = await get_run(pool, str(run_id))
         if existing is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
         raise HTTPException(
@@ -192,34 +193,34 @@ async def cancel_run(
 
 @router.get("/runs/{run_id}", response_model=RunResponse)
 async def read_run(
-    run_id: str,
+    run_id: uuid.UUID,
     pool: PoolDep,
 ) -> Any:
     """Get a run by ID."""
     from agentbox.db.queries import get_run, get_scoped_credentials
 
-    run = await get_run(pool, run_id)
+    run = await get_run(pool, str(run_id))
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
 
-    creds = await get_scoped_credentials(pool, run_id)
+    creds = await get_scoped_credentials(pool, str(run_id))
     return _run_to_response(run, creds)
 
 
 @router.get("/runs/{run_id}/checkpoints", response_model=list[CheckpointResponse])
 async def read_checkpoints(
-    run_id: str,
+    run_id: uuid.UUID,
     pool: PoolDep,
 ) -> Any:
     """Get checkpoints for a run."""
     from agentbox.db.queries import get_checkpoints, get_run
 
     # Verify run exists
-    run = await get_run(pool, run_id)
+    run = await get_run(pool, str(run_id))
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
 
-    checkpoints = await get_checkpoints(pool, run_id)
+    checkpoints = await get_checkpoints(pool, str(run_id))
     return [
         {
             "step_index": cp["step_index"],
@@ -234,13 +235,13 @@ async def read_checkpoints(
 
 @router.get("/runs/{run_id}/cost", response_model=CostResponse)
 async def read_run_cost(
-    run_id: str,
+    run_id: uuid.UUID,
     pool: PoolDep,
 ) -> Any:
     """Get cost breakdown for a run."""
     from agentbox.cost.tracker import get_run_cost
 
-    cost = await get_run_cost(pool, run_id)
+    cost = await get_run_cost(pool, str(run_id))
     if cost is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
     return cost
