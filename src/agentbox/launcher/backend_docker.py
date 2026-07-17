@@ -101,12 +101,30 @@ class DockerBackend:
 
         for container in containers:
             try:
-                container.kill()
-                logger.info("Killed container %s for run %s", container.short_id, run_id)
-            except docker.errors.APIError:
-                logger.exception(
-                    "Failed to kill container %s for run %s", container.short_id, run_id
-                )
+                if container.status == "running":
+                    container.kill()
+                    logger.info("Killed container %s for run %s", container.short_id, run_id)
+                else:
+                    logger.info(
+                        "Container %s already stopped (status=%s) for run %s — removing",
+                        container.short_id,
+                        container.status,
+                        run_id,
+                    )
+            except docker.errors.APIError as exc:
+                if "is not running" in str(exc):
+                    logger.info(
+                        "Container %s already exited for run %s — removing",
+                        container.short_id,
+                        run_id,
+                    )
+                else:
+                    logger.warning(
+                        "Failed to kill container %s for run %s: %s",
+                        container.short_id,
+                        run_id,
+                        exc,
+                    )
 
         # Remove after kill
         for container in containers:
