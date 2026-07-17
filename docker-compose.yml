@@ -55,8 +55,8 @@ services:
 
   credential-proxy:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.credential-proxy
+      context: ./docker
+      dockerfile: Dockerfile.credential-proxy
     ports:
       - "${CREDENTIAL_PROXY_PORT:-9090}:9090"
     environment:

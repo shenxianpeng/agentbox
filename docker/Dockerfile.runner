@@ -24,4 +24,6 @@ USER agentbox
 
 # Entrypoint
 ENV PYTHONUNBUFFERED=1
-CMD ["uv", "run", "python", "-m", "agentbox.runner.main"]
+# Use venv python directly — uv run forces a re-sync from PyPI which
+# fails on the agentbox-internal network (no internet access).
+CMD ["/app/.venv/bin/python", "-m", "agentbox.runner.main"]

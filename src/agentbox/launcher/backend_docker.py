@@ -46,9 +46,14 @@ class DockerBackend:
         proxy_port = os.environ.get("EGRESS_PROXY_PORT", "8888")
         proxy_url = f"http://{proxy_host}:{proxy_port}"
 
+        # When running inside a Docker Compose network, replace localhost
+        # with the postgres service hostname so the runner can reach the DB.
+        runner_db_url = settings.runner_database_url.replace("@localhost:", "@postgres:")
+
         env = {
             "RUN_ID": run_id,
-            "DATABASE_URL": settings.runner_database_url,
+            # pydantic-settings reads 'runner_database_url' from env var RUNNER_DATABASE_URL
+            "RUNNER_DATABASE_URL": runner_db_url,
             "AGENTBOX_CREDENTIALS_JSON": scoped_credentials,
             "MODEL_NAME": settings.model_name,
             "LOGFIRE_TOKEN": settings.logfire_token,
@@ -76,6 +81,7 @@ class DockerBackend:
             mem_limit="512m",
             pids_limit=100,
             read_only=True,
+            tmpfs={"/tmp": ""},  # writable /tmp for Python temp files, SSL certs, etc.
             cap_add=[],
             extra_hosts={
                 "host.docker.internal": "host-gateway",

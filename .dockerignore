@@ -28,8 +28,12 @@ site/
 *.yaml
 !pyproject.toml
 
-# Docker
-docker/
+# The docker/ directory is the build context for Dockerfiles.
+# Dockerfiles reference specific files from it (entrypoint.sh, credential_proxy.py).
+# Excluding the whole directory breaks credential-proxy and control-plane builds.
+# Keep it excluded from the runner context (build from project root) since the
+# runner Dockerfile doesn't need docker/ files.
+# docker/
 Dockerfile*
 .dockerignore
 
