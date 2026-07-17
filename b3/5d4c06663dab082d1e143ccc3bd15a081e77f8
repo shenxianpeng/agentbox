@@ -1,0 +1,49 @@
+src/agentbox/runner/main.py
+  s_bc1b06a2f9446e::t_79670a4701f2ee 232-257,269-270,280-281
+  s_d502272c4686f0::t_7d3f45fa23ac2e 292-297
+  s_bc1b06a2f9446e::t_a0663343abc98e 19-21
+docker-compose.yml
+  s_bc1b06a2f9446e::t_cd2ddc690fabe2 58-59
+src/agentbox/launcher/backend_docker.py
+  s_4b0076e3571ce6::t_b92296e95e95a5 49-54
+  s_d502272c4686f0::t_b69395d1075106 86
+  s_bc1b06a2f9446e::t_f948918dd6621b 57-58
+docker/Dockerfile.runner
+  s_bc1b06a2f9446e::t_7a87444d217504 27-29
+.dockerignore
+  s_bc1b06a2f9446e::t_9c1161390d97d2 31-36
+docker/Dockerfile.credential-proxy
+  s_bc1b06a2f9446e::t_b861b965ae4628 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b35d4c06663dab082d1e143ccc3bd15a081e77f8",
+  "prompts": {},
+  "sessions": {
+    "s_4b0076e3571ce6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f70da-19cb-7b5e-ac21-5698b53574cc",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    },
+    "s_bc1b06a2f9446e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f7164-0e64-7a01-b26c-b00a4fbb52f8",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    },
+    "s_d502272c4686f0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f715e-51d8-7b63-ac1b-d17f29c2a48a",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
