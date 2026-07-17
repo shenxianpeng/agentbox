@@ -239,12 +239,12 @@ class ScopedPool:
     reliably.
     """
 
-    def __init__(self, pool: asyncpg.Pool[Any], run_id: str) -> None:
+    def __init__(self, pool: asyncpg.Pool, run_id: str) -> None:
         self._pool = pool
         self._run_id = run_id
 
     @asynccontextmanager
-    async def acquire(self) -> AsyncIterator[asyncpg.Connection]:
+    async def acquire(self) -> AsyncIterator[Any]:
         async with self._pool.acquire() as conn:
             await conn.execute("SELECT set_config('app.run_id', $1, false)", self._run_id)
             yield conn
