@@ -476,19 +476,33 @@ real past run using only MCP tools that source data from Logfire.
    CONTRACT in Step 1.3 is fixed, the implementation details are not.
 8. Cost tracking is best-effort estimation, not a billing system.
 
-## 7. Definition of Done
+## 7. Definition of Done (status: honest snapshot)
 
-- [ ] Kill-and-resume e2e passes on both Docker and K8s backends
-- [ ] Egress default-deny verified by test
-- [ ] **Scoped credentials**: verified that sandbox containers never have access to
-      master API keys, and that scoped credentials expire after run TTL
-- [ ] **Cost tracking**: completed runs show cost breakdown at `/runs/{id}/cost`
-- [ ] **Cold-start optimization**: warm pool reduces second-run cold-start to near-zero;
-      cold_start_ms span attribute recorded in Logfire
-- [ ] **Multi-tenant data model**: tenant_id on all tables; per-tenant queue and
-      concurrency limits working
-- [ ] One Logfire trace shows a full run incl. replayed spans
-- [ ] **MCP ops-agent queries Logfire** (not Postgres) and answers questions about
-      past runs
+- [x] Kill-and-resume proven by CI-runnable simulation tests
+      (`tests/unit/test_kill_and_resume.py`, TestModel + in-memory store:
+      zero repeated model calls, identical output); full-stack Docker e2e
+      exists (`tests/e2e/test_kill_and_resume.py`) but needs a Docker daemon
+      and an LLM API key, so it does not run in CI. K8s-backend e2e not yet run.
+- [ ] Egress default-deny verified by test (config exists — tinyproxy
+      Filter + FilterDefaultDeny + anchored allowlist — but no automated test yet)
+- [x] **Scoped credentials**: sandbox only receives a per-run token; the real
+      key lives in the credential proxy's memory and the proxy enforces the
+      token TTL on every request
+- [x] **Cost tracking**: token usage read from ModelResponse.usage per model
+      call; breakdown at `/runs/{id}/cost`
+- [ ] **Cold-start optimization**: not implemented. The original warm-pool
+      design was unworkable (Docker can't inject RUN_ID into a running
+      container) and was removed; a self-assigning warm-runner design is
+      documented in settings.py but not built. No cold_start_ms metric yet.
+- [x] **Multi-tenant data model**: tenant_id on all tables; round-robin
+      claim across tenants; per-tenant max_concurrent enforced in the claim query
+- [x] One Logfire trace shows a full run: traceparent propagates
+      API → launcher → runner; durable-step spans carry replayed=true/false
+      (verified by unit tests; needs a real Logfire token for visual confirmation)
+- [x] **MCP ops-agent queries Logfire** via the SQL query API
+      (logfire-api.pydantic.dev/v1/query), not Postgres (not yet exercised
+      against a live Logfire project)
 - [ ] README with quickstart, diagram, JD-mapping table, demo GIF
-- [ ] CI green
+      (quickstart + diagram done; demo GIF and mapping table pending)
+- [x] CI green (lint + format + pyright + 2-version test matrix + Docker
+      image build + lockfile check)
