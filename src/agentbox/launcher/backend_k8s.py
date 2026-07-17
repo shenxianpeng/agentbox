@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+from typing import Any
 
 from agentbox.settings import settings
 
@@ -43,6 +44,7 @@ class K8sBackend:
         scoped_credentials: str,
         env_overrides: dict[str, str] | None = None,
         credential_proxy_url: str = "",
+        traceparent: str | None = None,
     ) -> str:
         """Start a runner Job for the given run.
 
@@ -110,6 +112,7 @@ class K8sBackend:
         replacements = {
             "<RUN_ID>": run_id,
             "<MODEL_NAME>": settings.model_name,
+            "<TRACEPARENT>": traceparent or "",
             "<RUNNER_IMAGE>": settings.runner_image,
             "<PROXY_URL>": PROXY_URL,
             "<RUNTIME_CLASS>": (
@@ -127,17 +130,45 @@ class K8sBackend:
         job_manifest["metadata"]["name"] = job_name
 
         try:
-            self._batch.create_namespaced_job(NAMESPACE, job_manifest)
+            job = self._batch.create_namespaced_job(NAMESPACE, job_manifest)
             logger.info("Created Job %s for run %s", job_name, run_id)
         except k8s.client.ApiException as exc:
             if exc.status == 409:
                 logger.warning("Job %s already exists", job_name)
+                job = self._batch.read_namespaced_job(job_name, NAMESPACE)
             else:
                 self._delete_secret(secret_name)
                 self._delete_secret(db_secret_name)
                 raise
 
+        # ── Own the Secrets by the Job so Kubernetes garbage-collects them ──
+        # ttlSecondsAfterFinished deletes the Job after completion; without an
+        # ownerReference the Secrets of successful runs would leak (the reaper
+        # only cleans up runs whose lease died).
+        self._own_secrets_by_job(job, [secret_name, db_secret_name])
+
         return job_name
+
+    def _own_secrets_by_job(self, job: Any, secret_names: list[str]) -> None:
+        """Patch Secrets with an ownerReference to the Job for cascade deletion."""
+        import kubernetes as k8s
+
+        # Raw patch body uses Kubernetes API (camelCase) field names
+        owner_ref = {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "name": job.metadata.name,
+            "uid": job.metadata.uid,
+        }
+        for name in secret_names:
+            try:
+                self._core.patch_namespaced_secret(
+                    name,
+                    NAMESPACE,
+                    {"metadata": {"ownerReferences": [owner_ref]}},
+                )
+            except k8s.client.ApiException as exc:
+                logger.warning("Failed to set ownerReference on Secret %s: %s", name, exc)
 
     def kill_run(self, run_id: str) -> bool:
         """Delete the Job and Secrets for the given run.
@@ -177,14 +208,15 @@ class K8sBackend:
         job_name = f"run-{run_id[:20]}"
         try:
             job = self._batch.read_namespaced_job(job_name, NAMESPACE)
-            if job.status and job.status.active and job.status.active > 0:
+            if job and job.status and job.status.active and job.status.active > 0:
                 return True
             # Check pods as well
             pods = self._core.list_namespaced_pod(
                 NAMESPACE,
                 label_selector=f"agentbox.run_id={run_id}",
             )
-            return any(pod.status and pod.status.phase == "Running" for pod in pods.items)
+            pod_items = pods.items if pods and pods.items else []
+            return any(pod.status and pod.status.phase == "Running" for pod in pod_items)
         except k8s.client.ApiException as exc:
             if exc.status == 404:
                 return False
@@ -195,19 +227,26 @@ class K8sBackend:
         import kubernetes as k8s
 
         try:
-            pods = self._core.list_namespaced_pod(
-                NAMESPACE,
-                label_selector=f"agentbox.run_id={run_id}",
+            from typing import cast
+
+            pods = cast(
+                Any,
+                self._core.list_namespaced_pod(
+                    NAMESPACE,
+                    label_selector=f"agentbox.run_id={run_id}",
+                ),
             )
-            if not pods.items:
+            pod_items = pods.items if pods and pods.items else []
+            if not pod_items:
                 return f"[No pod found for run {run_id}]"
-            pod_name = pods.items[0].metadata.name
+            metadata = pod_items[0].metadata
+            pod_name = metadata.name if metadata and metadata.name else ""
             logs = self._core.read_namespaced_pod_log(
                 pod_name,
                 NAMESPACE,
                 tail_lines=tail,
             )
-            return logs
+            return str(logs)
         except k8s.client.ApiException as exc:
             return f"[Failed to get logs: {exc}]"
 

@@ -119,6 +119,7 @@ class DurableContext:
         fingerprint: str | None = None,
         token_count: int | None = None,
         cost: float | None = None,
+        usage_from_result: Callable[[Any], tuple[int | None, float | None]] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> JSONable:
         """Execute a single step with checkpoint/replay.
@@ -129,6 +130,10 @@ class DurableContext:
             fingerprint: Optional deterministic hash for replay verification.
             token_count: Optional token usage for cost tracking.
             cost: Optional estimated cost in USD.
+            usage_from_result: Optional callable evaluated on the live result
+                to derive (token_count, cost) after execution — used for model
+                calls where usage is only known once the response arrives.
+                Takes precedence over the static token_count/cost arguments.
             metadata: Optional additional metadata to store with checkpoint.
 
         Returns:
@@ -186,6 +191,12 @@ class DurableContext:
             ):
                 result = await fn()
             serialized = _serialize_payload(result)
+
+            if usage_from_result is not None:
+                try:
+                    token_count, cost = usage_from_result(result)
+                except Exception:
+                    logger.exception("usage_from_result failed at step %d", idx)
 
             # Store checkpoint (same connection)
             await conn.execute(

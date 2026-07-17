@@ -28,6 +28,17 @@ from agentbox.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Logfire metrics — no-ops until logfire.configure() runs in main()
+runs_claimed_counter = logfire.metric_counter(
+    "agentbox.runs.claimed", unit="1", description="Runs claimed by the launcher"
+)
+runs_requeued_counter = logfire.metric_counter(
+    "agentbox.runs.requeued", unit="1", description="Runs requeued after a dead lease"
+)
+runs_failed_counter = logfire.metric_counter(
+    "agentbox.runs.failed", unit="1", description="Runs failed permanently by the launcher"
+)
+
 POLL_INTERVAL = 2  # seconds between queue polls
 REAPER_INTERVAL = 10  # seconds between reaper scans
 LEASE_TTL_SECONDS = 30  # lease considered dead after this long
@@ -46,7 +57,13 @@ async def claim_next_run(
     pool: asyncpg.Pool,
     tenant_id: str | None = None,
 ) -> dict | None:
-    """Claim the next queued run for a tenant (or any tenant)."""
+    """Claim the next queued run for a tenant (or any tenant).
+
+    Enforces the tenant's max_concurrent limit: no run is claimed while the
+    tenant already has max_concurrent runs in 'running' status. The count is
+    evaluated inside the claim statement, so a single launcher cannot exceed
+    the limit; with multiple launcher replicas the limit is approximate.
+    """
     if tenant_id is None:
         tenant_id = "00000000-0000-0000-0000-000000000001"
 
@@ -56,13 +73,21 @@ async def claim_next_run(
             UPDATE runs
             SET status = 'running', attempt = attempt + 1, started_at = now()
             WHERE id = (
-                SELECT id FROM runs
-                WHERE status = 'queued' AND tenant_id = $1::uuid
-                ORDER BY created_at ASC
+                SELECT r.id
+                FROM runs r
+                JOIN tenants t ON t.id = r.tenant_id
+                WHERE r.status = 'queued'
+                  AND r.tenant_id = $1::uuid
+                  AND (
+                      SELECT COUNT(*) FROM runs r2
+                      WHERE r2.tenant_id = r.tenant_id AND r2.status = 'running'
+                  ) < t.max_concurrent
+                ORDER BY r.created_at ASC
                 LIMIT 1
-                FOR UPDATE SKIP LOCKED
+                FOR UPDATE OF r SKIP LOCKED
             )
-            RETURNING id, tenant_id, agent_name, prompt, egress_allow, attempt, max_attempts
+            RETURNING id, tenant_id, agent_name, prompt, egress_allow, attempt,
+                      max_attempts, traceparent
             """,
             tenant_id,
         )
@@ -302,49 +327,61 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
         run["max_attempts"],
     )
 
-    with logfire.span(
-        "launcher-claim",
-        run_id=run_id,
-        agent=run["agent_name"],
-        attempt=run["attempt"],
-    ):
-        await create_lease(pool, run_id)
+    # Continue the trace started by POST /runs so the API, launcher, and
+    # runner spans all land in one Logfire trace.
+    from agentbox.tracing import attach_traceparent, capture_traceparent, detach_context
 
-        # Fetch scoped credentials (per-run token) from DB
-        creds = await _fetch_scoped_credentials(pool, run_id)
+    runs_claimed_counter.add(1)
+    trace_token = attach_traceparent(run.get("traceparent"))
+    try:
+        with logfire.span(
+            "launcher-claim",
+            run_id=run_id,
+            agent=run["agent_name"],
+            attempt=run["attempt"],
+        ):
+            await create_lease(pool, run_id)
 
-        # Register the real API key with the credential proxy
-        key_info = _get_llm_api_key_and_base_url()
-        if key_info:
-            real_api_key, base_url = key_info
-            # Get the first per-run token from credentials
-            for _scope_key, cred_info in creds.items():
-                per_run_token = cred_info["credential"]
-                expires_at = cred_info.get("expires_at")
-                await _register_with_credential_proxy(
-                    per_run_token, real_api_key, base_url, expires_at
-                )
-                break
-        else:
-            logger.warning("No LLM API key configured — runs will fail")
+            # Fetch scoped credentials (per-run token) from DB
+            creds = await _fetch_scoped_credentials(pool, run_id)
 
-        try:
-            backend.start_run(
-                run_id=run_id,
-                database_url=settings.database_url,
-                scoped_credentials=json.dumps(creds),
-                credential_proxy_url=settings.credential_proxy_url,
-            )
-        except Exception as exc:
-            logger.exception("Failed to start container for run %s: %s", run_id, exc)
-            # Clean up the key mapping
-            for _scope_key, cred_info in creds.items():
-                await _unregister_from_credential_proxy(cred_info["credential"])
-            await release_lease(pool, run_id)
-            if run["attempt"] >= run["max_attempts"]:
-                await fail_run(pool, run_id, f"Container start failed: {exc}")
+            # Register the real API key with the credential proxy
+            key_info = _get_llm_api_key_and_base_url()
+            if key_info:
+                real_api_key, base_url = key_info
+                # Get the first per-run token from credentials
+                for _scope_key, cred_info in creds.items():
+                    per_run_token = cred_info["credential"]
+                    expires_at = cred_info.get("expires_at")
+                    await _register_with_credential_proxy(
+                        per_run_token, real_api_key, base_url, expires_at
+                    )
+                    break
             else:
-                await requeue_run(pool, run_id)
+                logger.warning("No LLM API key configured — runs will fail")
+
+            try:
+                backend.start_run(
+                    run_id=run_id,
+                    database_url=settings.database_url,
+                    scoped_credentials=json.dumps(creds),
+                    credential_proxy_url=settings.credential_proxy_url,
+                    traceparent=capture_traceparent(),
+                )
+            except Exception as exc:
+                logger.exception("Failed to start container for run %s: %s", run_id, exc)
+                # Clean up the key mapping
+                for _scope_key, cred_info in creds.items():
+                    await _unregister_from_credential_proxy(cred_info["credential"])
+                await release_lease(pool, run_id)
+                if run["attempt"] >= run["max_attempts"]:
+                    await fail_run(pool, run_id, f"Container start failed: {exc}")
+                    runs_failed_counter.add(1)
+                else:
+                    await requeue_run(pool, run_id)
+                    runs_requeued_counter.add(1)
+    finally:
+        detach_context(trace_token)
 
 
 async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:
@@ -388,9 +425,11 @@ async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:
                             f"Run exceeded max attempts ({max_attempts}). "
                             f"Last lease heartbeat: {lease['heartbeat_at']}",
                         )
+                        runs_failed_counter.add(1)
                         logfire.info("Run failed permanently (max attempts)", run_id=run_id)
                     else:
                         await requeue_run(pool, run_id)
+                        runs_requeued_counter.add(1)
                         logfire.info("Run requeued for retry", run_id=run_id, attempt=attempt)
 
         except Exception as exc:

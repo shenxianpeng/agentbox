@@ -29,6 +29,7 @@ class DockerBackend:
         scoped_credentials: str,
         env_overrides: dict[str, str] | None = None,
         credential_proxy_url: str = "",
+        traceparent: str | None = None,
     ) -> str:
         """Start a runner container for the given run.
 
@@ -53,6 +54,9 @@ class DockerBackend:
             "LOGFIRE_TOKEN": settings.logfire_token,
             "PYTHONUNBUFFERED": "1",
             "CREDENTIAL_PROXY_URL": credential_proxy_url,
+            # W3C trace context: the runner attaches this so its spans join
+            # the trace started by POST /runs
+            "TRACEPARENT": traceparent or "",
             "HTTP_PROXY": proxy_url,
             "HTTPS_PROXY": proxy_url,
             "NO_PROXY": "localhost,127.0.0.1,0.0.0.0,postgres,credential-proxy",
@@ -83,7 +87,7 @@ class DockerBackend:
             run_id,
             settings.runner_image,
         )
-        return container.id
+        return container.id or ""
 
     def kill_run(self, run_id: str) -> bool:
         """Kill and remove the container for the given run.
@@ -145,7 +149,7 @@ class DockerBackend:
             command=["sleep", "infinity"],
         )
         logger.info("Created warm container %s", container.short_id)
-        return container.id
+        return container.id or ""
 
     def kill(self, container_id: str) -> None:
         """Kill a container by ID (for warm pool cleanup)."""
