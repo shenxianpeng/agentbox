@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_bc1b06a2f9446e::t_ecbd2377e204fc 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "006ba3ae2ddba5dbfa93a1b9970484d8840be49a",
+  "prompts": {},
+  "sessions": {
+    "s_bc1b06a2f9446e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f7164-0e64-7a01-b26c-b00a4fbb52f8",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
