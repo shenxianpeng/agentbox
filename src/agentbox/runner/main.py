@@ -135,6 +135,14 @@ def _setup_logging(run_id: str) -> None:
         )
         logfire.instrument_asyncpg()
         logfire.instrument_httpx()
+        logfire.instrument_pydantic_ai()
+
+        # Join the trace started by POST /runs (propagated by the launcher
+        # via the TRACEPARENT env var), so the whole lifecycle is one trace.
+        from agentbox.tracing import attach_traceparent_from_env
+
+        attach_traceparent_from_env()
+
         logfire.info("Runner starting", run_id=run_id)
 
 

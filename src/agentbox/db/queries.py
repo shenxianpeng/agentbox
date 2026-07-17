@@ -27,6 +27,7 @@ async def insert_run(
     prompt: str,
     egress_allow: list[str] | None = None,
     tenant_id: str | None = None,
+    traceparent: str | None = None,
 ) -> dict[str, Any]:
     """Insert a new queued run and return its row as a dict."""
     run_id = uuid.uuid4()
@@ -38,8 +39,8 @@ async def insert_run(
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO runs (id, tenant_id, agent_name, prompt, egress_allow)
-            VALUES ($1, $2::uuid, $3, $4, $5)
+            INSERT INTO runs (id, tenant_id, agent_name, prompt, egress_allow, traceparent)
+            VALUES ($1, $2::uuid, $3, $4, $5, $6)
             RETURNING id, status, tenant_id, agent_name, prompt, egress_allow,
                       attempt, max_attempts, created_at, started_at, finished_at,
                       result, error, cost_estimate
@@ -49,6 +50,7 @@ async def insert_run(
             agent_name,
             prompt,
             egress_allow,
+            traceparent,
         )
     return dict(row)
 

@@ -29,6 +29,7 @@ class DockerBackend:
         scoped_credentials: str,
         env_overrides: dict[str, str] | None = None,
         credential_proxy_url: str = "",
+        traceparent: str | None = None,
     ) -> str:
         """Start a runner container for the given run.
 
@@ -53,6 +54,9 @@ class DockerBackend:
             "LOGFIRE_TOKEN": settings.logfire_token,
             "PYTHONUNBUFFERED": "1",
             "CREDENTIAL_PROXY_URL": credential_proxy_url,
+            # W3C trace context: the runner attaches this so its spans join
+            # the trace started by POST /runs
+            "TRACEPARENT": traceparent or "",
             "HTTP_PROXY": proxy_url,
             "HTTPS_PROXY": proxy_url,
             "NO_PROXY": "localhost,127.0.0.1,0.0.0.0,postgres,credential-proxy",

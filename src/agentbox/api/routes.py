@@ -139,17 +139,20 @@ async def create_run(
     """Submit a new agent run."""
     from agentbox.db.queries import insert_run
     from agentbox.secrets.scoper import store_scoped_credentials
+    from agentbox.tracing import capture_traceparent
 
     # Determine which API key to use
     api_key = settings.deepseek_api_key or settings.anthropic_api_key or ""
 
-    # Insert the run
+    # Insert the run, carrying the request's trace context so the launcher
+    # and runner spans join this trace
     run = await insert_run(
         pool,
         agent_name=body.agent_name,
         prompt=body.prompt,
         egress_allow=body.egress_allow,
         tenant_id=body.tenant_id,
+        traceparent=capture_traceparent(),
     )
 
     # Mint scoped credentials for this run

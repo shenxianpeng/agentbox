@@ -36,6 +36,8 @@ spec:
               value: "<RUN_ID>"
             - name: MODEL_NAME
               value: "<MODEL_NAME>"
+            - name: TRACEPARENT
+              value: "<TRACEPARENT>"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

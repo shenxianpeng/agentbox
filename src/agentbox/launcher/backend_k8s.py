@@ -43,6 +43,7 @@ class K8sBackend:
         scoped_credentials: str,
         env_overrides: dict[str, str] | None = None,
         credential_proxy_url: str = "",
+        traceparent: str | None = None,
     ) -> str:
         """Start a runner Job for the given run.
 
@@ -110,6 +111,7 @@ class K8sBackend:
         replacements = {
             "<RUN_ID>": run_id,
             "<MODEL_NAME>": settings.model_name,
+            "<TRACEPARENT>": traceparent or "",
             "<RUNNER_IMAGE>": settings.runner_image,
             "<PROXY_URL>": PROXY_URL,
             "<RUNTIME_CLASS>": (
