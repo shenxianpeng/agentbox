@@ -22,7 +22,6 @@ import dataclasses
 import hashlib
 import json
 import logging
-from collections.abc import AsyncIterator
 from typing import Any
 
 from pydantic_ai.messages import (
@@ -30,8 +29,8 @@ from pydantic_ai.messages import (
     ModelResponse,
 )
 from pydantic_ai.models import Model, ModelRequestParameters
+from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.usage import RequestUsage as Usage
 
 from agentbox.runner.durable import DurableContext
 
@@ -153,23 +152,28 @@ def _deserialize_model_response(data: dict[str, Any]) -> ModelResponse:
     return ModelResponse(**kwargs)
 
 
-class DurableModel(Model):
+class DurableModel(WrapperModel):
     """A pydantic-ai Model wrapper that checkpoints every model call.
 
-    Every call to `request()` is routed through DurableContext.step(), so the
-    LLM response is checkpointed to Postgres. On replay, the stored response
-    is returned without calling the underlying model.
+    Extends pydantic-ai's ``WrapperModel``, so every part of the Model
+    interface except ``request()`` is delegated to the wrapped model — this
+    is the same base class pydantic-ai uses for its own wrappers, which
+    keeps DurableModel aligned with upstream as the interface evolves.
 
-    This is designed as a drop-in replacement for any pydantic-ai Model:
+    Every call to ``request()`` is routed through DurableContext.step(), so
+    the LLM response is checkpointed to Postgres. On replay, the stored
+    response is returned without calling the underlying model. Token usage
+    and cost are recorded from the real ``ModelResponse.usage`` once the
+    response arrives (falling back to a rough length-based estimate for
+    models that don't report usage).
+
+    Streaming (``request_stream``) is inherited as a passthrough and NOT
+    checkpointed: a run that streams will re-execute that step on resume.
+
+    Usage:
 
         model = DurableModel(inner_model, context=durable_context)
         agent = Agent(model)
-
-    To contribute back to pydantic-ai, this class could be extracted into a
-    `pydantic_ai_durable` package with:
-      - A pluggable storage backend (Postgres, Redis, file, etc.)
-      - Configurable fingerprint strategies
-      - Telemetry hooks for observability
     """
 
     def __init__(
@@ -178,19 +182,9 @@ class DurableModel(Model):
         context: DurableContext,
         cost_tracking: bool = True,
     ) -> None:
-        self._inner = inner
+        super().__init__(inner)
         self._context = context
         self._cost_tracking = cost_tracking
-
-    # ── Model interface ────────────────────────────────────
-
-    @property
-    def model_name(self) -> str:
-        return self._inner.model_name
-
-    @property
-    def system(self) -> str | None:
-        return getattr(self._inner, "system", None)
 
     async def request(
         self,
@@ -200,49 +194,14 @@ class DurableModel(Model):
     ) -> ModelResponse:
         fingerprint = _messages_fingerprint(messages)
 
-        # Estimate input tokens before making the request (best-effort)
-        # Some models (e.g. TestModel) don't support count_tokens, so we handle it gracefully
-        input_tokens = 0
-        try:
-            input_usage = await self._inner.count_tokens(
-                messages, model_settings, model_request_parameters
-            )
-            input_tokens = input_usage.input_tokens or 0
-        except NotImplementedError:
-            pass
-
         async def _do_request() -> ModelResponse:
-            return await self._inner.request(messages, model_settings, model_request_parameters)
-
-        # We capture output_tokens after the request by wrapping _do_request
-        output_tokens = 0
-
-        async def _do_request_with_tracking() -> ModelResponse:
-            nonlocal output_tokens
-            resp = await self._inner.request(messages, model_settings, model_request_parameters)
-            # Estimate output tokens from response content
-            text_length = 0
-            for part in resp.parts:
-                from pydantic_ai.messages import TextPart
-
-                if isinstance(part, TextPart):
-                    text_length += len(part.content)
-                elif hasattr(part, "content"):
-                    text_length += len(str(part.content))
-            # Rough estimate: ~4 chars per token for English text
-            output_tokens = max(1, text_length // 4)
-            return resp
-
-        # Compute estimated cost
-        cost = _estimate_cost(self.model_name, input_tokens, output_tokens)
-        total_tokens = input_tokens + output_tokens
+            return await self.wrapped.request(messages, model_settings, model_request_parameters)
 
         result = await self._context.step(
             kind="model_call",
-            fn=_do_request_with_tracking,
+            fn=_do_request,
             fingerprint=fingerprint,
-            token_count=total_tokens,
-            cost=cost,
+            usage_from_result=self._usage_from_response if self._cost_tracking else None,
         )
 
         # On replay, checkpoint stores a dataclass-asdict dict.
@@ -252,55 +211,22 @@ class DurableModel(Model):
 
         return result
 
-    async def request_stream(
-        self,
-        messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-    ) -> AsyncIterator[Any]:
-        """Streaming mode — not yet checkpointed. Falls through to inner model.
+    def _usage_from_response(self, resp: Any) -> tuple[int | None, float | None]:
+        """Derive (token_count, cost) from a live ModelResponse.
 
-        TODO: checkpoint streaming responses as complete chunks.
-        For Phase 1, streaming is not checkpointed; the run will fail on resume
-        if it uses streaming. This is an acceptable limitation for the MVP.
+        Prefers the provider-reported usage; falls back to a ~4 chars/token
+        estimate of the response text when the model reports no usage.
         """
-        async for chunk in self._inner.request_stream(
-            messages, model_settings, model_request_parameters
-        ):
-            yield chunk
+        usage = getattr(resp, "usage", None)
+        input_tokens = (usage.input_tokens or 0) if usage else 0
+        output_tokens = (usage.output_tokens or 0) if usage else 0
 
-    async def compact_messages(
-        self,
-        messages: list[ModelMessage],
-        *,
-        instructions: str | None = None,
-    ) -> ModelResponse:
-        """Compact messages — pass through to inner model."""
-        return await self._inner.compact_messages(messages, instructions=instructions)
+        if input_tokens == 0 and output_tokens == 0:
+            text_length = sum(
+                len(str(getattr(part, "content", ""))) for part in getattr(resp, "parts", [])
+            )
+            output_tokens = max(1, text_length // 4)
 
-    async def count_tokens(
-        self,
-        messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-    ) -> Usage:
-        return await self._inner.count_tokens(messages, model_settings, model_request_parameters)
-
-    def customize_request_parameters(
-        self,
-        model_request_parameters: ModelRequestParameters,
-    ) -> ModelRequestParameters:
-        return self._inner.customize_request_parameters(model_request_parameters)
-
-    def prepare_messages(
-        self,
-        messages: list[ModelMessage],
-    ) -> list[ModelMessage]:
-        return self._inner.prepare_messages(messages)
-
-    def prepare_request(
-        self,
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-    ) -> tuple[ModelSettings | None, ModelRequestParameters]:
-        return self._inner.prepare_request(model_settings, model_request_parameters)
+        total = input_tokens + output_tokens
+        cost = _estimate_cost(self.model_name, input_tokens, output_tokens)
+        return total, cost
