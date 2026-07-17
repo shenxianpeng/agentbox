@@ -28,6 +28,17 @@ from agentbox.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Logfire metrics — no-ops until logfire.configure() runs in main()
+runs_claimed_counter = logfire.metric_counter(
+    "agentbox.runs.claimed", unit="1", description="Runs claimed by the launcher"
+)
+runs_requeued_counter = logfire.metric_counter(
+    "agentbox.runs.requeued", unit="1", description="Runs requeued after a dead lease"
+)
+runs_failed_counter = logfire.metric_counter(
+    "agentbox.runs.failed", unit="1", description="Runs failed permanently by the launcher"
+)
+
 POLL_INTERVAL = 2  # seconds between queue polls
 REAPER_INTERVAL = 10  # seconds between reaper scans
 LEASE_TTL_SECONDS = 30  # lease considered dead after this long
@@ -320,6 +331,7 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
     # runner spans all land in one Logfire trace.
     from agentbox.tracing import attach_traceparent, capture_traceparent, detach_context
 
+    runs_claimed_counter.add(1)
     trace_token = attach_traceparent(run.get("traceparent"))
     try:
         with logfire.span(
@@ -364,8 +376,10 @@ async def _handle_claimed_run(pool: asyncpg.Pool, backend: Any, run: dict) -> No
                 await release_lease(pool, run_id)
                 if run["attempt"] >= run["max_attempts"]:
                     await fail_run(pool, run_id, f"Container start failed: {exc}")
+                    runs_failed_counter.add(1)
                 else:
                     await requeue_run(pool, run_id)
+                    runs_requeued_counter.add(1)
     finally:
         detach_context(trace_token)
 
@@ -411,9 +425,11 @@ async def reaper_loop(pool: asyncpg.Pool, backend: Any) -> None:
                             f"Run exceeded max attempts ({max_attempts}). "
                             f"Last lease heartbeat: {lease['heartbeat_at']}",
                         )
+                        runs_failed_counter.add(1)
                         logfire.info("Run failed permanently (max attempts)", run_id=run_id)
                     else:
                         await requeue_run(pool, run_id)
+                        runs_requeued_counter.add(1)
                         logfire.info("Run requeued for retry", run_id=run_id, attempt=attempt)
 
         except Exception as exc:

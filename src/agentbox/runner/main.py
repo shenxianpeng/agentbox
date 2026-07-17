@@ -33,6 +33,14 @@ from agentbox.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Logfire metrics — no-ops until logfire.configure() runs
+run_duration_histogram = logfire.metric_histogram(
+    "agentbox.run.duration_seconds", unit="s", description="Wall-clock duration of agent runs"
+)
+run_cost_histogram = logfire.metric_histogram(
+    "agentbox.run.cost_usd", unit="USD", description="Estimated total cost per run"
+)
+
 RUN_ID_ENV_VAR = "RUN_ID"
 LEASE_HEARTBEAT_INTERVAL = 5  # seconds
 LEASE_TTL = 30  # seconds — launcher reclaims lease if no heartbeat
@@ -290,15 +298,20 @@ async def main() -> int:
             tenant_id=tenant_id,
             agent_name=agent_name,
         )
+        import time
+
+        exec_started = time.monotonic()
         with logfire_span:
             logger.info("Starting agent execution: %s", agent_name)
             result = await agent.run(prompt)
             output = str(result.output)
+        run_duration_histogram.record(time.monotonic() - exec_started)
 
         logger.info("Agent execution completed: %s", agent_name)
 
         # Calculate cost and write result
         total_cost = await _calculate_total_cost(pool, run_id)
+        run_cost_histogram.record(total_cost)
         await update_run_result(pool, run_id, "succeeded", result=output, cost_estimate=total_cost)
 
         logger.info("Run %s completed successfully (cost: $%.6f)", run_id, total_cost)
