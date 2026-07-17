@@ -16,6 +16,9 @@ import logging
 import os
 import sys
 import traceback
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 import asyncpg
 import logfire
@@ -226,6 +229,30 @@ async def _release_lease(pool: asyncpg.Pool, run_id: str) -> None:
 # ── Main entrypoint ──────────────────────────────────────────────────────────
 
 
+class ScopedPool:
+    """Pool wrapper that sets app.run_id on every connection acquire.
+
+    asyncpg's pool resets session state (including custom GUCs) when a
+    connection is returned to the pool, so the ``init`` callback (which
+    runs only once per connection lifetime) is insufficient. This wrapper
+    ensures ``app.run_id`` is set on every ``acquire()``, making RLS work
+    reliably.
+    """
+
+    def __init__(self, pool: asyncpg.Pool, run_id: str) -> None:
+        self._pool = pool
+        self._run_id = run_id
+
+    @asynccontextmanager
+    async def acquire(self) -> AsyncIterator[Any]:
+        async with self._pool.acquire() as conn:
+            await conn.execute("SELECT set_config('app.run_id', $1, false)", self._run_id)
+            yield conn
+
+    async def close(self) -> None:
+        await self._pool.close()
+
+
 async def main() -> int:
     """Run the agent and return exit code (0=success, 1=error)."""
     run_id = os.environ.get(RUN_ID_ENV_VAR)
@@ -237,6 +264,8 @@ async def main() -> int:
     logger.info("Runner starting for run %s", run_id)
 
     # Use the restricted runner role + set app.run_id for Row-Level Security
+    # NOTE: init callback is NOT sufficient — asyncpg resets session state on
+    # connection release. See ScopedPool wrapper below for the real fix.
     async def _init_conn(conn: asyncpg.Connection) -> None:
         await conn.execute("SELECT set_config('app.run_id', $1, false)", run_id)
 
@@ -246,6 +275,8 @@ async def main() -> int:
         max_size=5,
         init=_init_conn,
     )
+    # Wrap pool so every acquire() sets app.run_id (fixes RLS on re-acquire)
+    pool = ScopedPool(pool, run_id)
 
     try:
         # Claim lease and start heartbeat
@@ -256,6 +287,12 @@ async def main() -> int:
         run_row = await get_run_row(pool, run_id)
         if run_row is None:
             logger.error("Run %s not found in database", run_id)
+            await _release_lease(pool, run_id)
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
             return 1
 
         tenant_id = str(run_row["tenant_id"])
