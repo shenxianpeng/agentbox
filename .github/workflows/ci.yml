@@ -41,7 +41,7 @@ jobs:
         run: uv run ruff format --check src/ tests/
 
       - name: Type check with pyright
-        run: uv run pyright src/agentbox/runner/durable.py src/agentbox/runner/durable_model.py
+        run: uv run pyright src/agentbox
 
       - name: Verify lockfile is up to date
         run: uv lock --check

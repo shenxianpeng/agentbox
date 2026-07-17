@@ -208,14 +208,15 @@ class K8sBackend:
         job_name = f"run-{run_id[:20]}"
         try:
             job = self._batch.read_namespaced_job(job_name, NAMESPACE)
-            if job.status and job.status.active and job.status.active > 0:
+            if job and job.status and job.status.active and job.status.active > 0:
                 return True
             # Check pods as well
             pods = self._core.list_namespaced_pod(
                 NAMESPACE,
                 label_selector=f"agentbox.run_id={run_id}",
             )
-            return any(pod.status and pod.status.phase == "Running" for pod in pods.items)
+            pod_items = pods.items if pods and pods.items else []
+            return any(pod.status and pod.status.phase == "Running" for pod in pod_items)
         except k8s.client.ApiException as exc:
             if exc.status == 404:
                 return False
@@ -226,19 +227,26 @@ class K8sBackend:
         import kubernetes as k8s
 
         try:
-            pods = self._core.list_namespaced_pod(
-                NAMESPACE,
-                label_selector=f"agentbox.run_id={run_id}",
+            from typing import cast
+
+            pods = cast(
+                Any,
+                self._core.list_namespaced_pod(
+                    NAMESPACE,
+                    label_selector=f"agentbox.run_id={run_id}",
+                ),
             )
-            if not pods.items:
+            pod_items = pods.items if pods and pods.items else []
+            if not pod_items:
                 return f"[No pod found for run {run_id}]"
-            pod_name = pods.items[0].metadata.name
+            metadata = pod_items[0].metadata
+            pod_name = metadata.name if metadata and metadata.name else ""
             logs = self._core.read_namespaced_pod_log(
                 pod_name,
                 NAMESPACE,
                 tail_lines=tail,
             )
-            return logs
+            return str(logs)
         except k8s.client.ApiException as exc:
             return f"[Failed to get logs: {exc}]"
 

@@ -87,7 +87,7 @@ class DockerBackend:
             run_id,
             settings.runner_image,
         )
-        return container.id
+        return container.id or ""
 
     def kill_run(self, run_id: str) -> bool:
         """Kill and remove the container for the given run.
@@ -149,7 +149,7 @@ class DockerBackend:
             command=["sleep", "infinity"],
         )
         logger.info("Created warm container %s", container.short_id)
-        return container.id
+        return container.id or ""
 
     def kill(self, container_id: str) -> None:
         """Kill a container by ID (for warm pool cleanup)."""
