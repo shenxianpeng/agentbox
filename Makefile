@@ -66,6 +66,7 @@ down:  ## Stop all services and remove volumes
 	docker compose down -v
 
 postgres-up:  ## Start only Postgres (for local development)
+	docker compose down 2>/dev/null || true
 	docker compose up -d postgres
 	@echo "Waiting for Postgres..."
 	@for i in $$(seq 1 30); do \
