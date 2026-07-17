@@ -1,0 +1,25 @@
+migrations/002_runner_rls.sql
+  s_4d1312164a3986::t_0c545b2a7c9c40 37-46,48-58,66-75,77-86,93-103,111-120,126-135
+docker/Dockerfile.egress-proxy
+  s_4d1312164a3986::t_ca3f329c8eb49a 1-10
+src/agentbox/api/main.py
+  s_4d1312164a3986::t_1932d3f67db440 60-69
+docker-compose.yml
+  s_4d1312164a3986::t_1eb7ac536208d6 43-45,48-50,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9a93f7561dab18cca3efb401577fa60660e484b0",
+  "prompts": {},
+  "sessions": {
+    "s_4d1312164a3986": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019f71cc-890b-70a4-a7ff-bbbfb22da326",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "shenxianpeng <xianpeng.shen@gmail.com>"
+    }
+  }
+}
