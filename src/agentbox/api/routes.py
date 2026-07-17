@@ -106,12 +106,6 @@ class CostResponse(BaseModel):
 # ── Routes ──────────────────────────────────────────────────
 
 
-@router.get("/healthz")
-async def healthz():
-    """Health check endpoint for Docker/K8s probes."""
-    return {"status": "ok"}
-
-
 @router.get("/runs", response_model=list[RunResponse])
 async def list_runs(pool: PoolDep, limit: int = 20, offset: int = 0):
     """List all runs with pagination."""

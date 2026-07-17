@@ -57,7 +57,16 @@ app = FastAPI(
 # If needed in the future, restrict to specific origins.
 # app.add_middleware(CORSMiddleware, ...)
 
-# Register routes
+
+# ── Public health check (no auth required) ─────────────────
+@app.get("/health")
+@app.get("/healthz")
+async def health():
+    """Health check endpoint for Docker/K8s probes."""
+    return {"status": "ok"}
+
+
+# Register routes (auth-protected via router dependencies)
 from agentbox.api.routes import router  # noqa: E402
 
 app.include_router(router, prefix="")

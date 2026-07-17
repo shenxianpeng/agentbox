@@ -34,16 +34,28 @@ GRANT UPDATE (status, result, error, cost_estimate, started_at, finished_at)
 
 ALTER TABLE runs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY runner_select_own_run ON runs
-    FOR SELECT
-    TO agentbox_runner
-    USING (id::text = current_setting('app.run_id', true));  -- scoped to own run
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_select_own_run' AND tablename = 'runs') THEN
+        CREATE POLICY runner_select_own_run ON runs
+            FOR SELECT
+            TO agentbox_runner
+            USING (id::text = current_setting('app.run_id', true));
+    END IF;
+END
+$$;
 
-CREATE POLICY runner_update_own_run ON runs
-    FOR UPDATE
-    TO agentbox_runner
-    USING (id::text = current_setting('app.run_id', true))
-    WITH CHECK (id::text = current_setting('app.run_id', true));
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_update_own_run' AND tablename = 'runs') THEN
+        CREATE POLICY runner_update_own_run ON runs
+            FOR UPDATE
+            TO agentbox_runner
+            USING (id::text = current_setting('app.run_id', true))
+            WITH CHECK (id::text = current_setting('app.run_id', true));
+    END IF;
+END
+$$;
 
 -- ── checkpoints: runner can only SELECT/INSERT rows matching its run_id ──
 GRANT SELECT, INSERT (run_id, step_index, kind, fingerprint, payload, token_count, cost)
@@ -51,26 +63,44 @@ GRANT SELECT, INSERT (run_id, step_index, kind, fingerprint, payload, token_coun
 
 ALTER TABLE checkpoints ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY runner_select_own_checkpoints ON checkpoints
-    FOR SELECT
-    TO agentbox_runner
-    USING (run_id::text = current_setting('app.run_id', true));
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_select_own_checkpoints' AND tablename = 'checkpoints') THEN
+        CREATE POLICY runner_select_own_checkpoints ON checkpoints
+            FOR SELECT
+            TO agentbox_runner
+            USING (run_id::text = current_setting('app.run_id', true));
+    END IF;
+END
+$$;
 
-CREATE POLICY runner_insert_own_checkpoints ON checkpoints
-    FOR INSERT
-    TO agentbox_runner
-    WITH CHECK (run_id::text = current_setting('app.run_id', true));
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_insert_own_checkpoints' AND tablename = 'checkpoints') THEN
+        CREATE POLICY runner_insert_own_checkpoints ON checkpoints
+            FOR INSERT
+            TO agentbox_runner
+            WITH CHECK (run_id::text = current_setting('app.run_id', true));
+    END IF;
+END
+$$;
 
 -- ── leases: runner can manage only its own lease ──
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE leases TO agentbox_runner;
 
 ALTER TABLE leases ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY runner_manage_own_lease ON leases
-    FOR ALL
-    TO agentbox_runner
-    USING (run_id::text = current_setting('app.run_id', true))
-    WITH CHECK (run_id::text = current_setting('app.run_id', true));
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_manage_own_lease' AND tablename = 'leases') THEN
+        CREATE POLICY runner_manage_own_lease ON leases
+            FOR ALL
+            TO agentbox_runner
+            USING (run_id::text = current_setting('app.run_id', true))
+            WITH CHECK (run_id::text = current_setting('app.run_id', true));
+    END IF;
+END
+$$;
 
 -- ── scoped_credentials: runner has NO access (credentials are injected via proxy) ──
 -- The runner does NOT need to read scoped_credentials at all.
@@ -78,16 +108,28 @@ CREATE POLICY runner_manage_own_lease ON leases
 -- Explicitly revoke any default access.
 ALTER TABLE scoped_credentials ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY runner_no_access ON scoped_credentials
-    FOR ALL
-    TO agentbox_runner
-    USING (false);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_no_access' AND tablename = 'scoped_credentials') THEN
+        CREATE POLICY runner_no_access ON scoped_credentials
+            FOR ALL
+            TO agentbox_runner
+            USING (false);
+    END IF;
+END
+$$;
 
 -- ── tenants: runner has no access ──
 REVOKE ALL ON TABLE tenants FROM agentbox_runner;
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY runner_no_access_tenants ON tenants
-    FOR ALL
-    TO agentbox_runner
-    USING (false);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'runner_no_access_tenants' AND tablename = 'tenants') THEN
+        CREATE POLICY runner_no_access_tenants ON tenants
+            FOR ALL
+            TO agentbox_runner
+            USING (false);
+    END IF;
+END
+$$;

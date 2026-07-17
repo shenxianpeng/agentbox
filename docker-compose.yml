@@ -40,18 +40,18 @@ services:
       - agentbox-control
 
   egress-proxy:
-    image: vimagick/tinyproxy:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.egress-proxy
     cap_add:
       - NET_ADMIN
-    tmpfs: /run
-    volumes:
-      - ./docker/tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro
-      - ./docker/tinyproxy-allowlist.txt:/etc/tinyproxy/tinyproxy-allowlist.txt:ro
+    tmpfs:
+      - /run
+      - /var/log
     networks:
       - agentbox-control
       - agentbox-internal
-    depends_on:
-      - postgres
+    depends_on: []
 
   credential-proxy:
     build:

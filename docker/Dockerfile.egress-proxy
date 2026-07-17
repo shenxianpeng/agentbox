@@ -1,0 +1,10 @@
+FROM alpine:3.21
+
+RUN apk add --no-cache tinyproxy~=1.11
+
+COPY docker/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
+COPY docker/tinyproxy-allowlist.txt /etc/tinyproxy/tinyproxy-allowlist.txt
+
+EXPOSE 8888
+
+ENTRYPOINT ["tinyproxy", "-d"]
