@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+from typing import Any
 
 from agentbox.settings import settings
 
@@ -129,17 +130,45 @@ class K8sBackend:
         job_manifest["metadata"]["name"] = job_name
 
         try:
-            self._batch.create_namespaced_job(NAMESPACE, job_manifest)
+            job = self._batch.create_namespaced_job(NAMESPACE, job_manifest)
             logger.info("Created Job %s for run %s", job_name, run_id)
         except k8s.client.ApiException as exc:
             if exc.status == 409:
                 logger.warning("Job %s already exists", job_name)
+                job = self._batch.read_namespaced_job(job_name, NAMESPACE)
             else:
                 self._delete_secret(secret_name)
                 self._delete_secret(db_secret_name)
                 raise
 
+        # ── Own the Secrets by the Job so Kubernetes garbage-collects them ──
+        # ttlSecondsAfterFinished deletes the Job after completion; without an
+        # ownerReference the Secrets of successful runs would leak (the reaper
+        # only cleans up runs whose lease died).
+        self._own_secrets_by_job(job, [secret_name, db_secret_name])
+
         return job_name
+
+    def _own_secrets_by_job(self, job: Any, secret_names: list[str]) -> None:
+        """Patch Secrets with an ownerReference to the Job for cascade deletion."""
+        import kubernetes as k8s
+
+        # Raw patch body uses Kubernetes API (camelCase) field names
+        owner_ref = {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "name": job.metadata.name,
+            "uid": job.metadata.uid,
+        }
+        for name in secret_names:
+            try:
+                self._core.patch_namespaced_secret(
+                    name,
+                    NAMESPACE,
+                    {"metadata": {"ownerReferences": [owner_ref]}},
+                )
+            except k8s.client.ApiException as exc:
+                logger.warning("Failed to set ownerReference on Secret %s: %s", name, exc)
 
     def kill_run(self, run_id: str) -> bool:
         """Delete the Job and Secrets for the given run.
