@@ -2,7 +2,7 @@
 
 site_name: AgentBox
 site_description: A minimal open-source agent platform — durable execution, sandboxed agents, Logfire tracing.
-site_url: https://shenxianpeng.github.io/agentbox/
+site_url: https://shenxianpeng.dev/agentbox/
 repo_url: https://github.com/shenxianpeng/agentbox
 repo_name: shenxianpeng/agentbox
 

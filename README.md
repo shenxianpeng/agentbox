@@ -6,7 +6,7 @@
 <div align="center">
   <a href="https://github.com/shenxianpeng/agentbox/actions/workflows/ci.yml"><img src="https://github.com/shenxianpeng/agentbox/actions/workflows/ci.yml/badge.svg?event=push" alt="CI"></a>
   <a href="https://codecov.io/gh/shenxianpeng/agentbox"><img src="https://codecov.io/gh/shenxianpeng/agentbox/graph/badge.svg?token=PP7HFOCSN5" alt="Coverage"></a>
-  <a href="https://shenxianpeng.github.io/agentbox/"><img src="https://img.shields.io/badge/docs-mkdocs-526CFE?logo=material-for-mkdocs&logoColor=white" alt="Docs"></a>
+  <a href="https://shenxianpeng.dev/agentbox/"><img src="https://img.shields.io/badge/docs-mkdocs-526CFE?logo=material-for-mkdocs&logoColor=white" alt="Docs"></a>
   <a href="https://github.com/shenxianpeng/agentbox/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shenxianpeng/agentbox.svg" alt="license"></a>
 </div>
 
