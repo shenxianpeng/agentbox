@@ -29,24 +29,24 @@ classifiers = [
 dependencies = [
     "asyncpg>=0.31.0",
     "docker>=7.2.0",
-    "fastapi>=0.139.0",
+    "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "kubernetes>=30.0.0",
-    "logfire>=4.37.0",
-    "pydantic-ai>=2.9.1",
-    "pydantic-settings>=2.14.2",
+    "logfire>=5.1.1",
+    "pydantic-ai>=2.51.0",
+    "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
-    "uvicorn[standard]>=0.51.0",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.0.0",
+    "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=6.1.0",
-    "ruff>=0.15.21",
-    "pyright>=1.1.400",
+    "ruff>=0.16.9",
+    "pyright>=1.1.414",
     "mkdocs-ng-material>=9.6.0",
 ]
 
