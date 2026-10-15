@@ -14,7 +14,8 @@ repos:
       - id: check-yaml
         # k8s/job-template.yaml is a template with placeholders, not valid YAML
         exclude: ^k8s/job-template\.yaml$
-        args: [--allow-multiple-documents]
+        # --unsafe: mkdocs.yml uses !!python/name tags (material emoji); only syntax is checked
+        args: [--allow-multiple-documents, --unsafe]
       - id: check-toml
       - id: check-added-large-files
       - id: check-merge-conflict
