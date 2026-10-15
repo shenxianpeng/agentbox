@@ -147,7 +147,7 @@ The `step()` method uses a **single database connection** for both reading and w
 `DurableModel` wraps any pydantic-ai `Model` and routes every `request()` through `DurableContext.step()`. This is a drop-in replacement:
 
 ```python
-inner = OpenAIModel('gpt-4', api_key=key)
+inner = OpenAIModel("gpt-4", api_key=key)
 model = DurableModel(inner, context=durable_context)
 agent = Agent(model)
 ```
