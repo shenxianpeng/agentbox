@@ -1,0 +1,21 @@
+tests/unit/test_durable.py
+  s_f518a1c9328c7b::t_9daadff5be8e05 107-111
+tests/unit/test_kill_and_resume.py
+  s_f518a1c9328c7b::t_0dfbcd82cacdb8 172-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ae67839d6d48bebe3c183122103f00625e97594",
+  "prompts": {},
+  "sessions": {
+    "s_f518a1c9328c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2b090ca-b947-4998-975f-5d845a56ad69",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Xianpeng Shen <xianpeng.shen@gmail.com>"
+    }
+  }
+}
