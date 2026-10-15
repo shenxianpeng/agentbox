@@ -18,12 +18,10 @@ Admin API (for launcher to register keys):
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -56,7 +54,9 @@ def get_client() -> httpx.AsyncClient:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Credential proxy starting (admin token: %s)", "set" if ADMIN_API_TOKEN else "NOT SET")
+    logger.info(
+        "Credential proxy starting (admin token: %s)", "set" if ADMIN_API_TOKEN else "NOT SET"
+    )
     yield
     global _client
     if _client:
@@ -74,8 +74,13 @@ app = FastAPI(title="credential-proxy", lifespan=lifespan)
 class RegisterKeyRequest(BaseModel):
     run_token: str = Field(..., description="Per-run token that the sandbox will use")
     api_key: str = Field(..., description="Real LLM API key (never enters the sandbox)")
-    base_url: str = Field(..., description="Upstream LLM API base URL (e.g. https://api.deepseek.com)")
-    expires_at: str | None = Field(default=None, description="ISO-8601 expiry timestamp; if set, key is rejected after this time")
+    base_url: str = Field(
+        ..., description="Upstream LLM API base URL (e.g. https://api.deepseek.com)"
+    )
+    expires_at: str | None = Field(
+        default=None,
+        description="ISO-8601 expiry timestamp; if set, key is rejected after this time",
+    )
 
 
 class RegisterKeyResponse(BaseModel):
@@ -90,7 +95,7 @@ def _verify_admin_token(request: Request) -> None:
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Bearer token")
-    token = auth[len("Bearer "):]
+    token = auth[len("Bearer ") :]
     if token != ADMIN_API_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
@@ -132,7 +137,9 @@ async def delete_key(run_token: str, request: Request):
 
     if run_token in KEY_STORE:
         del KEY_STORE[run_token]
-        logger.info("Deleted key for token %s... (%d keys remaining)", run_token[:8], len(KEY_STORE))
+        logger.info(
+            "Deleted key for token %s... (%d keys remaining)", run_token[:8], len(KEY_STORE)
+        )
         return {"status": "ok"}
     logger.warning("Key for token %s... not found, nothing to delete", run_token[:8])
     return {"status": "not_found"}
@@ -145,7 +152,7 @@ async def delete_key(run_token: str, request: Request):
 def _extract_bearer_token(request: Request) -> str | None:
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
-        return auth[len("Bearer "):]
+        return auth[len("Bearer ") :]
     return None
 
 
@@ -153,7 +160,7 @@ def _build_upstream_url(path: str, query: str, base_url: str) -> str:
     """Build the full upstream URL from the request path and base URL."""
     # Strip /v1 prefix from path if the base_url already includes it
     if base_url.endswith("/v1") and path.startswith("/v1"):
-        path = path[len("/v1"):]
+        path = path[len("/v1") :]
     # Ensure single slash between base_url and path
     base = base_url.rstrip("/")
     path = "/" + path.lstrip("/")
@@ -191,9 +198,7 @@ async def proxy(request: Request, path: str) -> Response:
     if expires_at:
         try:
             if datetime.now(UTC) > datetime.fromisoformat(expires_at):
-                logger.warning(
-                    "Expired token %s... (expired at %s)", token[:8], expires_at
-                )
+                logger.warning("Expired token %s... (expired at %s)", token[:8], expires_at)
                 del KEY_STORE[token]
                 return Response(
                     content='{"error": "Run token has expired"}',
@@ -235,8 +240,16 @@ async def proxy(request: Request, path: str) -> Response:
         # Build response
         response_headers = dict(upstream_resp.headers)
         # Remove hop-by-hop headers
-        for hop_header in ["transfer-encoding", "connection", "keep-alive", "proxy-authenticate",
-                           "proxy-authorization", "te", "trailer", "upgrade"]:
+        for hop_header in [
+            "transfer-encoding",
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailer",
+            "upgrade",
+        ]:
             response_headers.pop(hop_header, None)
 
         return Response(

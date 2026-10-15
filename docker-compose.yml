@@ -65,7 +65,7 @@ services:
     networks:
       - agentbox-control
       - agentbox-internal
-    depends_on: [] 
+    depends_on: []
 
   launcher:
     build:
