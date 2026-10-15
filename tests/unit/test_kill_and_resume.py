@@ -169,8 +169,12 @@ class CountingModel(Model):
     ) -> ModelRequestParameters:
         return self._inner.customize_request_parameters(model_request_parameters)
 
-    def prepare_messages(self, messages: list[ModelMessage]) -> list[ModelMessage]:
-        return self._inner.prepare_messages(messages)
+    def prepare_messages(
+        self,
+        messages: list[ModelMessage],
+        model_request_parameters: ModelRequestParameters | None = None,
+    ) -> list[ModelMessage]:
+        return self._inner.prepare_messages(messages, model_request_parameters)
 
     def prepare_request(
         self,
