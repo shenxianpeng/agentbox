@@ -1,0 +1,21 @@
+.github/workflows/ci.yml
+  s_f518a1c9328c7b::t_6840b153a3f5f5 108,111
+.github/workflows/docs-deploy.yml
+  s_f518a1c9328c7b::t_5cdf9e5f164975 41,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e49ecd6433957d9965c17b04820a2af2476cf60",
+  "prompts": {},
+  "sessions": {
+    "s_f518a1c9328c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2b090ca-b947-4998-975f-5d845a56ad69",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Xianpeng Shen <xianpeng.shen@gmail.com>"
+    }
+  }
+}
