@@ -1,0 +1,25 @@
+.pre-commit-config.yaml
+  s_f518a1c9328c7b::t_a588b9a985980e 3,15-16
+docker-compose.yml
+  s_f518a1c9328c7b::t_7636b270b7633c 68
+docker/credential_proxy.py
+  s_f518a1c9328c7b::t_69afe389aae97e 57-59,77-83,98,140-142,155,163,201,243-252
+docs/development.md
+  s_f518a1c9328c7b::t_0a48fdaf2147e5 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4944674c2acf266ff945a1907e7f964dc1df7cb1",
+  "prompts": {},
+  "sessions": {
+    "s_f518a1c9328c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2b090ca-b947-4998-975f-5d845a56ad69",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Xianpeng Shen <xianpeng.shen@gmail.com>"
+    }
+  }
+}
