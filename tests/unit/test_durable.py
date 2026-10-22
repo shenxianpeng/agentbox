@@ -130,7 +130,13 @@ class _InMemoryConnection:
 
     async def fetchrow(self, query: str, *args: Any, **kwargs: Any) -> dict | None:
         """Simulate SELECT from checkpoints table."""
-        if "step_index" in query:
+        if "MAX(step_index)" in query:
+            run_id = str(args[0])
+            matching = [(k, v) for k, v in self._store.items() if k[0] == run_id]
+            if matching:
+                max_idx = max(k[1] for k, _ in matching)
+                return {"max_idx": max_idx}
+        elif "step_index" in query:
             run_id = str(args[0])
             step_idx = int(args[1])
             key = (run_id, step_idx)
@@ -142,12 +148,6 @@ class _InMemoryConnection:
                     "token_count": entry.get("token_count"),
                     "cost": entry.get("cost"),
                 }
-        elif "MAX(step_index)" in query:
-            run_id = str(args[0])
-            matching = [(k, v) for k, v in self._store.items() if k[0] == run_id]
-            if matching:
-                max_idx = max(k[1] for k, _ in matching)
-                return {"max_idx": max_idx}
         return None
 
     async def execute(self, query: str, *args: Any) -> str:
