@@ -1,0 +1,41 @@
+tests/unit/test_backend_docker.py
+  s_808bcb54b94641::t_a4172f78b9fd66 1-245
+  s_808bcb54b94641::t_0e408f959dcac7 246
+tests/unit/test_durable_edge_cases.py
+  s_808bcb54b94641::t_d71dd10a9afe91 1-179
+tests/unit/test_backend_k8s.py
+  s_808bcb54b94641::t_54a248d13523b1 1-356
+  s_808bcb54b94641::t_4cbc86a1000a5e 357-358
+tests/unit/test_agents.py
+  s_808bcb54b94641::t_10e4877932acfa 1-182
+tests/unit/test_mcp_server.py
+  s_808bcb54b94641::t_cbddedbbd607a9 1-5,9-15,18-31,51-315
+  s_808bcb54b94641::t_7b6cdf0b46ce9a 316-320
+tests/unit/test_worker_loops.py
+  s_808bcb54b94641::t_97b737614d6953 1-300
+tests/unit/test_durable_model_edge_cases.py
+  s_808bcb54b94641::t_40bfa0208f7267 1-166
+  s_808bcb54b94641::t_e860aea2a42cdb 167-180
+tests/unit/test_credentials.py
+  s_808bcb54b94641::t_3848ab2243ea4c 60-70
+tests/unit/test_durable.py
+  s_808bcb54b94641::t_f9b6d54ca5dcbb 133-139
+tests/unit/test_routes_helpers.py
+  s_808bcb54b94641::t_d99771548ef470 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2c17f0c8e1f8355ace8149bf3d5655bd0bced11",
+  "prompts": {},
+  "sessions": {
+    "s_808bcb54b94641": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f452822-7f74-42c5-8597-23c2eec5567e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Xianpeng Shen <xianpeng.shen@gmail.com>"
+    }
+  }
+}
