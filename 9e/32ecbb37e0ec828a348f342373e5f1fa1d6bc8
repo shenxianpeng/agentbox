@@ -1,0 +1,34 @@
+tests/e2e/test_cost_tracker.py
+  s_808bcb54b94641::t_412f3af4716448 1-74
+tests/e2e/test_migrate.py
+  s_808bcb54b94641::t_33491918ea06b9 1-47
+  s_808bcb54b94641::t_0261b1348f4f10 48-50
+tests/e2e/test_worker_db.py
+  s_808bcb54b94641::t_4708882d62dfbe 1-330
+  s_808bcb54b94641::t_ca14cb25f5df4c 331-369
+tests/e2e/test_runner_main.py
+  s_808bcb54b94641::t_cc6d6379fdf5d3 1-311
+  s_808bcb54b94641::t_712b205296e8b6 312-317
+tests/e2e/test_app_lifespan.py
+  s_808bcb54b94641::t_46028a4464043f 1-57
+tests/e2e/conftest.py
+  s_808bcb54b94641::t_9ff7ad63701e9b 1-18
+tests/e2e/test_api.py
+  s_808bcb54b94641::t_b25768dc51d0d8 190-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e32ecbb37e0ec828a348f342373e5f1fa1d6bc8",
+  "prompts": {},
+  "sessions": {
+    "s_808bcb54b94641": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f452822-7f74-42c5-8597-23c2eec5567e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Xianpeng Shen <xianpeng.shen@gmail.com>"
+    }
+  }
+}
