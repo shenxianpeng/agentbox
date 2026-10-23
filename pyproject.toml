@@ -95,3 +95,15 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 addopts = "--cov=agentbox --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["agentbox"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+# Appended to coverage's defaults (pragma: no cover, "def ...: ...", if TYPE_CHECKING:)
+exclude_also = [
+    "if __name__ == .__main__.:",
+]

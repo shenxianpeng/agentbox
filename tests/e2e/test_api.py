@@ -187,3 +187,102 @@ async def test_cancel_run(client: AsyncClient):
     # Unknown but well-formed UUID -> 404
     resp = await client.put("/runs/00000000-0000-0000-0000-00000000dead/cancel")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_invalid_token_rejected():
+    """A well-formed but wrong Bearer token is rejected with 401."""
+    pool = await create_pool(settings.database_url)
+    app.state.pool = pool
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": "Bearer definitely-wrong"},
+        ) as bad:
+            resp = await bad.get("/runs")
+    finally:
+        await pool.close()
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Invalid token"
+
+
+@pytest.mark.asyncio
+async def test_create_run_with_egress_allow_and_tenant(client: AsyncClient):
+    """Optional egress_allow / tenant_id fields are stored and echoed back."""
+    resp = await client.post(
+        "/runs",
+        json={
+            "agent_name": "egress-test",
+            "prompt": "Fetch docs.",
+            "egress_allow": ["docs.example.com"],
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["egress_allow"] == ["docs.example.com"]
+    assert data["tenant_id"] == "00000000-0000-0000-0000-000000000001"
+
+
+@pytest.mark.asyncio
+async def test_list_runs_pagination(client: AsyncClient):
+    """GET /runs lists runs newest-first and honours limit/offset."""
+    ids = []
+    for i in range(2):
+        resp = await client.post("/runs", json={"agent_name": "list-test", "prompt": f"p{i}"})
+        assert resp.status_code == 201
+        ids.append(resp.json()["id"])
+
+    resp = await client.get("/runs", params={"limit": 1})
+    assert resp.status_code == 200
+    page = resp.json()
+    assert len(page) == 1
+    assert page[0]["id"] == ids[1]  # newest first
+    assert page[0]["credentials"] is None  # listing never includes credential metadata
+
+    resp = await client.get("/runs", params={"limit": 1, "offset": 1})
+    assert resp.json()[0]["id"] == ids[0]
+
+
+@pytest.mark.asyncio
+async def test_checkpoints_and_cost_404_for_unknown_run(client: AsyncClient):
+    """Sub-resources of a nonexistent run return 404, not empty data."""
+    missing = "00000000-0000-0000-0000-00000000beef"
+    assert (await client.get(f"/runs/{missing}/checkpoints")).status_code == 404
+    assert (await client.get(f"/runs/{missing}/cost")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_checkpoints_listing_omits_payload(client: AsyncClient):
+    """GET /runs/{id}/checkpoints returns step metadata but never the payload."""
+    resp = await client.post("/runs", json={"agent_name": "cp-list", "prompt": "p"})
+    run_id = resp.json()["id"]
+    async with app.state.pool.acquire() as conn:
+        for idx, kind, tokens, cost in (
+            (0, "model_call", 120, 0.0005),
+            (1, "tool_call", None, None),
+        ):
+            await conn.execute(
+                """
+                INSERT INTO checkpoints
+                    (run_id, step_index, kind, fingerprint, payload, token_count, cost)
+                VALUES ($1::uuid, $2, $3, 'fp', '{"secret": "payload"}'::jsonb, $4, $5)
+                """,
+                run_id,
+                idx,
+                kind,
+                tokens,
+                cost,
+            )
+
+    resp = await client.get(f"/runs/{run_id}/checkpoints")
+
+    assert resp.status_code == 200
+    first, second = resp.json()
+    assert first["step_index"] == 0 and first["kind"] == "model_call"
+    assert first["token_count"] == 120 and first["cost"] == pytest.approx(0.0005)
+    assert second["step_index"] == 1 and second["kind"] == "tool_call"
+    assert second["token_count"] is None and second["cost"] is None
+    assert "payload" not in first and "secret" not in resp.text
+    assert first["created_at"] <= second["created_at"]

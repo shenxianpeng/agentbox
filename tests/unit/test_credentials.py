@@ -57,3 +57,14 @@ def test_get_llm_api_key_not_found():
     creds = {"llm:other": {"credential": "token", "expires_at": ""}}
     key = get_llm_api_key(creds, "deepseek-chat")
     assert key == ""
+
+
+def test_load_credentials_invalid_json_falls_back_to_empty(monkeypatch, caplog):
+    """Malformed AGENTBOX_CREDENTIALS_JSON is logged and treated as no credentials."""
+    import logging
+
+    monkeypatch.setenv("AGENTBOX_CREDENTIALS_JSON", "{not json")
+    with caplog.at_level(logging.ERROR):
+        creds = load_credentials()
+    assert creds == {}
+    assert "Failed to parse AGENTBOX_CREDENTIALS_JSON" in caplog.text
