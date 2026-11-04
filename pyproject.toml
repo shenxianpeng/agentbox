@@ -47,7 +47,9 @@ dev = [
     "pytest-cov>=6.1.0",
     "ruff>=0.16.9",
     "pyright>=1.1.414",
-    "mkdocs-ng-material>=9.6.0",
+    "mkdocs-ng>=1.11.0",
+    "mkdocs-sumi>=0.2.1",
+    "pymdown-extensions>=10.16",
 ]
 
 [tool.mkdocs]
