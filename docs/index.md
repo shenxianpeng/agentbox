@@ -16,21 +16,15 @@ AgentBox solves these problems with **durable execution**, **sandboxing**, and *
 
 ## Quick Links
 
-<div class="grid" markdown>
-
-[:material-rocket-launch: Getting Started](getting-started.md)
-:   Set up AgentBox in under 5 minutes.
-
-[:material-cogs: Architecture](architecture.md)
-:   Understand the design: control plane, launcher, sandbox, and durability.
-
-[:material-code-tags: Development](development.md)
-:   Contribute to AgentBox — setup, testing, and code style.
-
-[:material-github: GitHub](https://github.com/shenxianpeng/agentbox)
-:   Source code, issues, and pull requests.
-
-</div>
+- :lucide-rocket: [Getting Started](getting-started.md)
+  Set up AgentBox in under 5 minutes.
+- :lucide-cog: [Architecture](architecture.md)
+  Understand the design: control plane, launcher, sandbox, and durability.
+- :lucide-code: [Development](development.md)
+  Contribute to AgentBox — setup, testing, and code style.
+- :brand-github: [GitHub](https://github.com/shenxianpeng/agentbox)
+  Source code, issues, and pull requests.
+{.cards cols=2}
 
 ## Key Concepts
 
